@@ -26,9 +26,9 @@ session_info()
 
 load_all()
 
-ls(2)
-pkg <- sub(x = search()[2], pattern = ".*:", replacement = "")
-packageVersion(pkg)
+search()
+ls("package:wzCoop")
+packageVersion("wzCoop")
 
 #-----------------------------------------------------------------------
 # Ignore the check on non-ASCII present in the datasets.
