@@ -70,10 +70,10 @@ build(manual = TRUE, vignettes = TRUE)
 
 rm(list = ls())
 
-lib <- path.expand("~/R-test/")
-dir.create(lib)
-.libPaths(new = lib)
-.libPaths()
+# lib <- path.expand("~/R-test/")
+# dir.create(lib)
+# .libPaths(new = lib)
+# .libPaths()
 
 install()
 
