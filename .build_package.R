@@ -25,7 +25,7 @@ sessionInfo()
 load_all()
 
 ls("package:wzCoop")
-packageVersion("WzCoop")
+packageVersion("wzCoop")
 
 #-----------------------------------------------------------------------
 # Ignore the check on non-ASCII present in the datasets.
