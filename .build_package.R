@@ -3,6 +3,8 @@
 #-----------------------------------------------------------------------
 
 options(echo = TRUE)
+R.version.string
+Sys.info()
 
 #-----------------------------------------------------------------------
 # Load packages used develop this package and install packages needed.
@@ -17,15 +19,16 @@ install_deps(dependencies = TRUE,
              upgrade = FALSE,
              repos = "http://cran-r.c3sl.ufpr.br/")
 
-sessionInfo()
+session_info()
 
 #-----------------------------------------------------------------------
 # Load package objects.
 
 load_all()
 
-ls("package:wzCoop")
-packageVersion("wzCoop")
+ls(2)
+pkg <- sub(x = search()[2], pattern = ".*:", replacement = "")
+packageVersion(pkg)
 
 #-----------------------------------------------------------------------
 # Ignore the check on non-ASCII present in the datasets.

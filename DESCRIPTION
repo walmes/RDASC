@@ -15,7 +15,7 @@ BugReports: https://gitlab.c3sl.ufpr.br/walmes/wzCoop/issues
 LazyData: true
 Encoding: UTF-8
 Depends:
-    R (>= 3.3.0),
+    R (>= 3.2.3),
     wzRfun
 Imports:
     lattice,
