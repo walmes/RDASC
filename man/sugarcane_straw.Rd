@@ -82,10 +82,10 @@ library(lattice)
 
 xyplot(tch ~ K | palha, groups = N, data = sugarcane_straw,
        type = c("p", "a"),
-       xlab = expression("Potássio"~(ka~ha^{-1})),
+       xlab = expression("Potássio"~(kg~ha^{-1})),
        ylab = expression("Produção de cana"~(ton~ha^{-1})),
        auto.key = list(
-           title = expression("Nitrogênio"~(ka~ha^{-1})),
+           title = expression("Nitrogênio"~(kg~ha^{-1})),
            cex.title = 1.1, columns = 5),
        strip = strip.custom(
            strip.names = FALSE,

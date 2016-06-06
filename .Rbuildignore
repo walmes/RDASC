@@ -1,1 +1,7 @@
 ^data-raw$
+^.build_package.R$
+^.gitlab-ci.yml$
+^.travis.yml$
+^README.Rmd$
+^README.md$
+^index.html$

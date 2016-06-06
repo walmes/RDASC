@@ -9,7 +9,7 @@ if (requireNamespace("lintr", quietly = TRUE)) {
 
 if (Sys.info()["sysname"] == "Linux" &
     file.exists("../../DESCRIPTION")) {
-    ref <- c("ASCII", "UTF-8", "directory")
+    ref <- c("ASCII", "UTF-8", "directory", "HTML", "bzip2")
     test_that("Encoding of files in root", {
         enc <- system(
             "file -b ../../* | cut -f 1 -d\" \" | sort | uniq",

@@ -7,9 +7,7 @@ author: >
   [Michael Jonathan Fernandes Alves](http://lattes.cnpq.br/0834978726176394)
 date: "`r Sys.Date()`"
 vignette: >
-  %\VignetteIndexEntry{
-    Doses de Nitrogênio e Potássio para Cana-de-açúcar em Diferentes
-    Sistemas de Manejo no Estado do Paraná}
+  %\VignetteIndexEntry{Doses de Nitrogênio e Potássio para Cana-de-açúcar em Diferentes Sistemas de Manejo no Estado do Paraná}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
