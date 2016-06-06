@@ -24,8 +24,8 @@ sessionInfo()
 
 load_all()
 
-ls("package:MRDCr")
-packageVersion("MRDCr")
+ls("package:wzCoop")
+packageVersion("WzCoop")
 
 #-----------------------------------------------------------------------
 # Ignore the check on non-ASCII present in the datasets.
