@@ -92,7 +92,8 @@ pn <- xyplot(y ~ N | palha, groups = K, data = sugarcane_straw,
                  factor.levels = c("Com palha", "Sem palha")))
 
 # grid.arrange(pn, pk)
-plot(pk)
+# plot(pk)
+plot(pn)
 ```
 
 ```{r}
@@ -105,7 +106,7 @@ m0 <- lmer(y ~ palha * nit * pot + (1 | bloc/ue),
 
 # Simple diagnostic.
 plot(m0)
-qqnorm(residuals(m0, type = "pearson"))
+# qqnorm(residuals(m0, type = "pearson"))
 
 # Estimates of the variance components.
 VarCorr(m0)
@@ -114,7 +115,7 @@ VarCorr(m0)
 anova(m0)
 
 # Estimates of the effects and fitting measures.
-summary(m0)
+# summary(m0)
 
 # Drop non relevant terms.
 # m1 <- update(m0, formula = . ~ palha * nit + pot + (1 | bloc/ue))
@@ -125,11 +126,13 @@ m1 <- lmer(y ~ palha * nit + pot + (1 | bloc/ue),
 anova(m1, m0)
 
 anova(m1)
-summary(m1)
+# summary(m1)
 
-# Linear effect for N and K.
+# Reducing by using linear effect for N and K.
 m2 <- lmer(y ~ palha * N + K + (1 | bloc/ue),
            data = sugarcane_straw, REML = FALSE)
+
+# Test the reduced model.
 anova(m2, m0)
 
 anova(m2)
@@ -180,56 +183,593 @@ xyplot(fit ~ N | factor(K), groups = palha, data = grid,
 
 ```
 
+****
 ## Peso médio de colmo
 
 ```{r}
-# update(p0, formula = pmc ~ .,
-#        ylab = "Peso médio de colmo (kg)")
-#
+#-----------------------------------------------------------------------
+
+leg$y <- "Peso médio de colmo (kg)"
+sugarcane_straw$y <- sugarcane_straw$pmc
+
+#-----------------------------------------------------------------------
+# Scatter plots.
+
+pk <- xyplot(y ~ K | palha, groups = N, data = sugarcane_straw,
+             type = c("p", "a"),
+             xlab = leg$K, ylab = leg$y,
+             auto.key = list(title = leg$N,
+                             cex.title = 1.1, columns = 5),
+             strip = strip.custom(
+                 strip.names = FALSE, strip.levels = TRUE,
+                 factor.levels = c("Com palha", "Sem palha")))
+
+pn <- xyplot(y ~ N | palha, groups = K, data = sugarcane_straw,
+             type = c("p", "a"),
+             xlab = leg$N, ylab = leg$y,
+             auto.key = list(title = leg$K,
+                             cex.title = 1.1, columns = 5),
+             strip = strip.custom(
+                 strip.names = FALSE, strip.levels = TRUE,
+                 factor.levels = c("Com palha", "Sem palha")))
+
+# grid.arrange(pn, pk)
+# plot(pk)
+plot(pn)
 ```
 
+```{r}
+#-----------------------------------------------------------------------
+# Model fitting.
+
+# Saturated model.
+m0 <- lmer(y ~ palha * nit * pot + (1 | bloc/ue),
+           data = sugarcane_straw, REML = FALSE)
+
+# Simple diagnostic.
+plot(m0)
+# qqnorm(residuals(m0, type = "pearson"))
+
+# Estimates of the variance components.
+VarCorr(m0)
+
+# Tests for the fixed effects.
+anova(m0)
+
+# Estimates of the effects and fitting measures.
+# summary(m0)
+
+# Drop non relevant terms.
+# m1 <- update(m0, formula = . ~ palha * nit + pot + (1 | bloc/ue))
+m1 <- lmer(y ~ palha + nit * pot + (1 | bloc/ue),
+           data = sugarcane_straw, REML = FALSE)
+
+# Test the reduced model.
+anova(m1, m0)
+
+anova(m1)
+# summary(m1)
+
+# Reducing by using linear effect for N and K.
+m2 <- lmer(y ~ palha + N * K + (1 | bloc/ue),
+           data = sugarcane_straw, REML = FALSE)
+
+# Test the reduced model.
+anova(m2, m0)
+
+anova(m2)
+summary(m2)
+
+# Final model.
+mod <- m2
+
+#-----------------------------------------------------------------------
+# Fitted values.
+
+# Experimental values to get estimates.
+grid <- with(sugarcane_straw,
+             expand.grid(palha = levels(palha),
+                         N = seq(min(N), max(N), length.out = 10),
+                         K = seq(min(N), max(N), length.out = 3),
+                         KEEP.OUT.ATTRS = FALSE))
+
+# Matrix of fixed effects.
+X <- model.matrix(terms(mod), data = cbind(grid, y = 0))
+
+# Confidence intervals.
+ci <- confint(glht(mod, linfct = X),
+              calpha = univariate_calpha())$confint
+colnames(ci)[1] <- "fit"
+
+grid <- cbind(grid, ci)
+str(grid)
+
+# Sample averages.
+# averages <- aggregate(nobars(formula(mod)),
+#                       data = sugarcane_straw, FUN = mean)
+#
+# xyplot(y ~ N | factor(K), groups = palha, data = averages,
+#        type = "o", as.table = TRUE)
+
+xyplot(fit ~ N | factor(K), groups = palha, data = grid,
+       type = "l", as.table = TRUE, layout = c(NA, 1),
+       xlab = leg$N, ylab = leg$y,
+       auto.key = list(title = leg$palha[1], cex.title = 1.1,
+                       text = c(leg$palha[-1]), columns = 2,
+                       points = FALSE, lines = TRUE),
+       uy = grid$upr, ly = grid$lwr,
+       cty = "bands", alpha = 0.25, fill = "gray50",
+       prepanel = prepanel.cbH,
+       panel.groups = panel.cbH,
+       panel = panel.superpose)
+
+```
+
+****
 ## Produção de cana-de-açúcar
 
 ```{r}
-# update(p0, formula = tch ~ .,
-#        ylab = expression("Produção de cana"~(ton~ha^{-1})))
-#
+#-----------------------------------------------------------------------
+
+leg$y <- expression("Produção de cana"~(ton~ha^{-1}))
+sugarcane_straw$y <- sugarcane_straw$tch
+
+#-----------------------------------------------------------------------
+# Scatter plots.
+
+pk <- xyplot(y ~ K | palha, groups = N, data = sugarcane_straw,
+             type = c("p", "a"),
+             xlab = leg$K, ylab = leg$y,
+             auto.key = list(title = leg$N,
+                             cex.title = 1.1, columns = 5),
+             strip = strip.custom(
+                 strip.names = FALSE, strip.levels = TRUE,
+                 factor.levels = c("Com palha", "Sem palha")))
+
+pn <- xyplot(y ~ N | palha, groups = K, data = sugarcane_straw,
+             type = c("p", "a"),
+             xlab = leg$N, ylab = leg$y,
+             auto.key = list(title = leg$K,
+                             cex.title = 1.1, columns = 5),
+             strip = strip.custom(
+                 strip.names = FALSE, strip.levels = TRUE,
+                 factor.levels = c("Com palha", "Sem palha")))
+
+# grid.arrange(pn, pk)
+# plot(pk)
+plot(pn)
 ```
 
+```{r}
+#-----------------------------------------------------------------------
+# Model fitting.
+
+# Saturated model.
+m0 <- lmer(y ~ palha * nit * pot + (1 | bloc/ue),
+           data = sugarcane_straw, REML = FALSE)
+
+# Simple diagnostic.
+plot(m0)
+# qqnorm(residuals(m0, type = "pearson"))
+
+# Estimates of the variance components.
+VarCorr(m0)
+
+# Tests for the fixed effects.
+anova(m0)
+
+# Estimates of the effects and fitting measures.
+# summary(m0)
+
+# Drop non relevant terms.
+# m1 <- update(m0, formula = . ~ palha * nit + pot + (1 | bloc/ue))
+m1 <- lmer(y ~ palha + nit + pot + (1 | bloc/ue),
+           data = sugarcane_straw, REML = FALSE)
+
+# Test the reduced model.
+anova(m1, m0)
+
+anova(m1)
+# summary(m1)
+
+# Reducing by using linear effect for N and K.
+m2 <- lmer(y ~ palha + N + K + (1 | bloc/ue),
+           data = sugarcane_straw, REML = FALSE)
+
+# Test the reduced model.
+anova(m2, m0)
+
+anova(m2)
+summary(m2)
+
+# Final model.
+mod <- m2
+
+#-----------------------------------------------------------------------
+# Fitted values.
+
+# Experimental values to get estimates.
+grid <- with(sugarcane_straw,
+             expand.grid(palha = levels(palha),
+                         N = seq(min(N), max(N), length.out = 10),
+                         K = seq(min(N), max(N), length.out = 3),
+                         KEEP.OUT.ATTRS = FALSE))
+
+# Matrix of fixed effects.
+X <- model.matrix(terms(mod), data = cbind(grid, y = 0))
+
+# Confidence intervals.
+ci <- confint(glht(mod, linfct = X),
+              calpha = univariate_calpha())$confint
+colnames(ci)[1] <- "fit"
+
+grid <- cbind(grid, ci)
+str(grid)
+
+# Sample averages.
+# averages <- aggregate(nobars(formula(mod)),
+#                       data = sugarcane_straw, FUN = mean)
+#
+# xyplot(y ~ N | factor(K), groups = palha, data = averages,
+#        type = "o", as.table = TRUE)
+
+xyplot(fit ~ N | factor(K), groups = palha, data = grid,
+       type = "l", as.table = TRUE, layout = c(NA, 1),
+       xlab = leg$N, ylab = leg$y,
+       auto.key = list(title = leg$palha[1], cex.title = 1.1,
+                       text = c(leg$palha[-1]), columns = 2,
+                       points = FALSE, lines = TRUE),
+       uy = grid$upr, ly = grid$lwr,
+       cty = "bands", alpha = 0.25, fill = "gray50",
+       prepanel = prepanel.cbH,
+       panel.groups = panel.cbH,
+       panel = panel.superpose)
+```
+
+****
 ## Teor de sacarose aparente
 
 ```{r}
-# update(p0, formula = pol ~ .,
-#        ylab = "Teor de sacarose aparente")
-#
+#-----------------------------------------------------------------------
+
+leg$y <- "Teor de sacarose aparente"
+sugarcane_straw$y <- sugarcane_straw$pol
+
+#-----------------------------------------------------------------------
+# Scatter plots.
+
+pk <- xyplot(y ~ K | palha, groups = N, data = sugarcane_straw,
+             type = c("p", "a"),
+             xlab = leg$K, ylab = leg$y,
+             auto.key = list(title = leg$N,
+                             cex.title = 1.1, columns = 5),
+             strip = strip.custom(
+                 strip.names = FALSE, strip.levels = TRUE,
+                 factor.levels = c("Com palha", "Sem palha")))
+
+pn <- xyplot(y ~ N | palha, groups = K, data = sugarcane_straw,
+             type = c("p", "a"),
+             xlab = leg$N, ylab = leg$y,
+             auto.key = list(title = leg$K,
+                             cex.title = 1.1, columns = 5),
+             strip = strip.custom(
+                 strip.names = FALSE, strip.levels = TRUE,
+                 factor.levels = c("Com palha", "Sem palha")))
+
+# grid.arrange(pn, pk)
+# plot(pk)
+plot(pn)
 ```
 
+```{r}
+#-----------------------------------------------------------------------
+# Model fitting.
+
+# Saturated model.
+m0 <- lmer(y ~ palha * nit * pot + (1 | bloc/ue),
+           data = sugarcane_straw, REML = FALSE)
+
+# Simple diagnostic.
+plot(m0)
+# qqnorm(residuals(m0, type = "pearson"))
+
+# Estimates of the variance components.
+VarCorr(m0)
+
+# Tests for the fixed effects.
+anova(m0)
+
+# Estimates of the effects and fitting measures.
+# summary(m0)
+```
+
+****
 ## Produção de sacarose
 
 ```{r}
-# update(p0, formula = tsh ~ .,
-#        ylab = expression("Sacarose"~(ton~ha^{-1})))
-#
+#-----------------------------------------------------------------------
+
+leg$y <- expression("Sacarose"~(ton~ha^{-1}))
+sugarcane_straw$y <- sugarcane_straw$tsh
+
+#-----------------------------------------------------------------------
+# Scatter plots.
+
+pk <- xyplot(y ~ K | palha, groups = N, data = sugarcane_straw,
+             type = c("p", "a"),
+             xlab = leg$K, ylab = leg$y,
+             auto.key = list(title = leg$N,
+                             cex.title = 1.1, columns = 5),
+             strip = strip.custom(
+                 strip.names = FALSE, strip.levels = TRUE,
+                 factor.levels = c("Com palha", "Sem palha")))
+
+pn <- xyplot(y ~ N | palha, groups = K, data = sugarcane_straw,
+             type = c("p", "a"),
+             xlab = leg$N, ylab = leg$y,
+             auto.key = list(title = leg$K,
+                             cex.title = 1.1, columns = 5),
+             strip = strip.custom(
+                 strip.names = FALSE, strip.levels = TRUE,
+                 factor.levels = c("Com palha", "Sem palha")))
+
+# grid.arrange(pn, pk)
+# plot(pk)
+plot(pn)
 ```
 
+```{r}
+#-----------------------------------------------------------------------
+# Model fitting.
+
+# Saturated model.
+m0 <- lmer(y ~ palha * nit * pot + (1 | bloc/ue),
+           data = sugarcane_straw, REML = FALSE)
+
+# Simple diagnostic.
+plot(m0)
+# qqnorm(residuals(m0, type = "pearson"))
+
+# Estimates of the variance components.
+VarCorr(m0)
+
+# Tests for the fixed effects.
+anova(m0)
+
+# Estimates of the effects and fitting measures.
+# summary(m0)
+
+# Drop non relevant terms.
+# m1 <- update(m0, formula = . ~ palha * nit + pot + (1 | bloc/ue))
+m1 <- lmer(y ~ palha + nit + pot + (1 | bloc/ue),
+           data = sugarcane_straw, REML = FALSE)
+
+# Test the reduced model.
+anova(m1, m0)
+
+anova(m1)
+# summary(m1)
+
+# Reducing by using linear effect for N and K.
+m2 <- lmer(y ~ palha + N + K + (1 | bloc/ue),
+           data = sugarcane_straw, REML = FALSE)
+
+# Test the reduced model.
+anova(m2, m0)
+
+anova(m2)
+summary(m2)
+
+# Final model.
+mod <- m2
+
+#-----------------------------------------------------------------------
+# Fitted values.
+
+# Experimental values to get estimates.
+grid <- with(sugarcane_straw,
+             expand.grid(palha = levels(palha),
+                         N = seq(min(N), max(N), length.out = 10),
+                         K = seq(min(N), max(N), length.out = 3),
+                         KEEP.OUT.ATTRS = FALSE))
+
+# Matrix of fixed effects.
+X <- model.matrix(terms(mod), data = cbind(grid, y = 0))
+
+# Confidence intervals.
+ci <- confint(glht(mod, linfct = X),
+              calpha = univariate_calpha())$confint
+colnames(ci)[1] <- "fit"
+
+grid <- cbind(grid, ci)
+str(grid)
+
+# Sample averages.
+# averages <- aggregate(nobars(formula(mod)),
+#                       data = sugarcane_straw, FUN = mean)
+#
+# xyplot(y ~ N | factor(K), groups = palha, data = averages,
+#        type = "o", as.table = TRUE)
+
+xyplot(fit ~ N | factor(K), groups = palha, data = grid,
+       type = "l", as.table = TRUE, layout = c(NA, 1),
+       xlab = leg$N, ylab = leg$y,
+       auto.key = list(title = leg$palha[1], cex.title = 1.1,
+                       text = c(leg$palha[-1]), columns = 2,
+                       points = FALSE, lines = TRUE),
+       uy = grid$upr, ly = grid$lwr,
+       cty = "bands", alpha = 0.25, fill = "gray50",
+       prepanel = prepanel.cbH,
+       panel.groups = panel.cbH,
+       panel = panel.superpose)
+```
+
+****
 ## Teor de nitrogênio nas folhas
 
 ```{r}
-# update(p0, formula = tfn ~ .,
-#        ylab = "Teor de nitrogênio nas folhas")
-#
+#-----------------------------------------------------------------------
+
+leg$y <- "Teor de nitrogênio nas folhas"
+sugarcane_straw$y <- sugarcane_straw$tfn
+
+#-----------------------------------------------------------------------
+# Scatter plots.
+
+pk <- xyplot(y ~ K | palha, groups = N, data = sugarcane_straw,
+             type = c("p", "a"),
+             xlab = leg$K, ylab = leg$y,
+             auto.key = list(title = leg$N,
+                             cex.title = 1.1, columns = 5),
+             strip = strip.custom(
+                 strip.names = FALSE, strip.levels = TRUE,
+                 factor.levels = c("Com palha", "Sem palha")))
+
+pn <- xyplot(y ~ N | palha, groups = K, data = sugarcane_straw,
+             type = c("p", "a"),
+             xlab = leg$N, ylab = leg$y,
+             auto.key = list(title = leg$K,
+                             cex.title = 1.1, columns = 5),
+             strip = strip.custom(
+                 strip.names = FALSE, strip.levels = TRUE,
+                 factor.levels = c("Com palha", "Sem palha")))
+
+# grid.arrange(pn, pk)
+# plot(pk)
+plot(pn)
 ```
 
+```{r}
+#-----------------------------------------------------------------------
+# Model fitting.
+
+# Saturated model.
+m0 <- lmer(y ~ palha * nit * pot + (1 | bloc/ue),
+           data = sugarcane_straw, REML = FALSE)
+
+# Simple diagnostic.
+plot(m0)
+# qqnorm(residuals(m0, type = "pearson"))
+
+# Estimates of the variance components.
+VarCorr(m0)
+
+# Tests for the fixed effects.
+anova(m0)
+
+# Estimates of the effects and fitting measures.
+# summary(m0)
+
+```
+
+****
 ## Teor de potássio nas folhas
 
 ```{r}
-# update(p0, formula = tfk ~ .,
-#        ylab = "Teor de potássio nas folhas")
+#-----------------------------------------------------------------------
+
+leg$y <- "Teor de potássio nas folhas"
+sugarcane_straw$y <- sugarcane_straw$tfk
+
+#-----------------------------------------------------------------------
+# Scatter plots.
+
+pk <- xyplot(y ~ K | palha, groups = N, data = sugarcane_straw,
+             type = c("p", "a"),
+             xlab = leg$K, ylab = leg$y,
+             auto.key = list(title = leg$N,
+                             cex.title = 1.1, columns = 5),
+             strip = strip.custom(
+                 strip.names = FALSE, strip.levels = TRUE,
+                 factor.levels = c("Com palha", "Sem palha")))
+
+pn <- xyplot(y ~ N | palha, groups = K, data = sugarcane_straw,
+             type = c("p", "a"),
+             xlab = leg$N, ylab = leg$y,
+             auto.key = list(title = leg$K,
+                             cex.title = 1.1, columns = 5),
+             strip = strip.custom(
+                 strip.names = FALSE, strip.levels = TRUE,
+                 factor.levels = c("Com palha", "Sem palha")))
+
+# grid.arrange(pn, pk)
+plot(pk)
+# plot(pn)
 ```
 
+```{r}
+#-----------------------------------------------------------------------
+# Model fitting.
+
+# Saturated model.
+m0 <- lmer(y ~ palha * nit * pot + (1 | bloc/ue),
+           data = sugarcane_straw, REML = FALSE)
+
+# Simple diagnostic.
+plot(m0)
+# qqnorm(residuals(m0, type = "pearson"))
+
+# Estimates of the variance components.
+VarCorr(m0)
+
+# Tests for the fixed effects.
+anova(m0)
+
+# Estimates of the effects and fitting measures.
+# summary(m0)
+
+# Final model.
+mod <- m0
+
+#-----------------------------------------------------------------------
+# Fitted values.
+
+# Experimental values to get estimates.
+grid <- with(sugarcane_straw,
+             expand.grid(palha = levels(palha),
+                         # N = seq(min(N), max(N), length.out = 10),
+                         # K = seq(min(N), max(N), length.out = 3),
+                         nit = levels(nit),
+                         pot = levels(pot),
+                         KEEP.OUT.ATTRS = FALSE))
+
+# Matrix of fixed effects.
+X <- model.matrix(terms(mod), data = cbind(grid, y = 0))
+
+# Confidence intervals.
+ci <- confint(glht(mod, linfct = X),
+              calpha = univariate_calpha())$confint
+colnames(ci)[1] <- "fit"
+
+grid <- cbind(grid, ci)
+str(grid)
+
+# Sample averages.
+# averages <- aggregate(nobars(formula(mod)),
+#                       data = sugarcane_straw, FUN = mean)
+#
+# xyplot(y ~ N | factor(K), groups = palha, data = averages,
+#        type = "o", as.table = TRUE)
+
+xyplot(fit ~ pot | nit, groups = palha, data = grid,
+       as.table = TRUE, layout = c(NA, 1), type = "o",
+       xlab = leg$N, ylab = leg$y,
+       auto.key = list(title = leg$palha[1], cex.title = 1.1,
+                       text = c(leg$palha[-1]), columns = 2,
+                       points = FALSE, lines = TRUE),
+       uy = grid$upr, ly = grid$lwr,
+       desloc =  0.2 * scale(as.integer(grid$palha), scale = FALSE),
+       cty = "bars", length = 0.02,
+       alpha = 0.25, fill = "gray50",
+       prepanel = prepanel.cbH,
+       panel.groups = panel.cbH,
+       panel = panel.superpose)
+```
+
+****
 ## Session information
 
-```{r, results="hold"}
+```{r, echo=FALSE, results="hold"}
 cat(format(Sys.time(), format = "%A, %d de %B de %Y, %H:%M"),
     "----------------------------------------", sep = "\n")
 sessionInfo()

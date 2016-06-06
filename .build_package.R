@@ -80,6 +80,6 @@ rm(list = ls())
 
 install()
 
-unlink(lib, recursive = TRUE)
+# unlink(lib, recursive = TRUE)
 
 #-----------------------------------------------------------------------
