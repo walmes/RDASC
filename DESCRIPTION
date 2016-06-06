@@ -1,0 +1,35 @@
+Package: wzCoop
+Title: Reproducible Data Analysis of Cientific Cooperations
+Version: 0.0-1
+Date: 2016-04-26
+Authors@R: as.person(c(
+    "Walmes Marques Zeviani <walmes@ufpr.br> [cre,aut]"))
+Description: wzCoop is a Reproducible Data Analysis Package. This is an
+    R package to keep, in a reproducible and free accessible way,
+    cientific colaborations that I participated. Datasets of each
+    cooperation are documented and its analysis are done as package
+    vignettes.
+License: GPL-3
+URL: https://gitlab.c3sl.ufpr.br/walmes/wzCoop
+BugReports: https://gitlab.c3sl.ufpr.br/walmes/wzCoop/issues
+LazyData: true
+Encoding: UTF-8
+Depends:
+    R (>= 3.3.0),
+    wzRfun
+Imports:
+    lattice,
+    latticeExtra,
+    doBy,
+    multcomp
+Suggests:
+    MASS,
+    car,
+    plyr,
+    reshape,
+    reshape2,
+    knitr,
+    rmarkdown,
+    testthat
+VignetteBuilder: knitr
+RoxygenNote: 5.0.1
