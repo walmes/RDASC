@@ -12,18 +12,26 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r setup, include=FALSE}
-source("_setup.R")
-```
-
 ## Session Definition
 
 ```{r, message=FALSE, results="hide"}
-pks <- c("lattice", "gridExtra", "lme4", "lmerTest", "doBy", "multcomp")
+# https://github.com/walmes/wzRfun
+# devtools::install_github("walmes/wzRfun")
+library(wzRfun)
+
+pks <- c("lattice",
+         "gridExtra",
+         "lme4",
+         "lmerTest",
+         "doBy",
+         "multcomp")
 sapply(pks, library, character.only = TRUE, logical.return = TRUE)
 ```
 ```{r, eval=FALSE}
 library(wzCoop)
+```
+```{r setup, include=FALSE}
+source("_setup.R")
 ```
 
 ## Exploratory data analysis
@@ -44,6 +52,7 @@ summary(sugarcane_straw)
 # A more detailed description.
 # Hmisc::describe(sugarcane_straw)
 
+# Create factors.
 sugarcane_straw <- within(sugarcane_straw, {
     # Convert integer to factor.
     palha <- factor(sugarcane_straw$palha)
@@ -660,7 +669,55 @@ anova(m0)
 # Estimates of the effects and fitting measures.
 # summary(m0)
 
+# Final model.
+mod <- m0
+
+#-----------------------------------------------------------------------
+# Fitted values.
+
+# Experimental values to get estimates.
+grid <- with(sugarcane_straw,
+             expand.grid(palha = levels(palha),
+                         # N = seq(min(N), max(N), length.out = 10),
+                         # K = seq(min(N), max(N), length.out = 3),
+                         nit = levels(nit),
+                         pot = levels(pot),
+                         KEEP.OUT.ATTRS = FALSE))
+
+# Matrix of fixed effects.
+X <- model.matrix(terms(mod), data = cbind(grid, y = 0))
+
+# Confidence intervals.
+ci <- confint(glht(mod, linfct = X),
+              calpha = univariate_calpha())$confint
+colnames(ci)[1] <- "fit"
+
+grid <- cbind(grid, ci)
+str(grid)
+
+# Sample averages.
+# averages <- aggregate(nobars(formula(mod)),
+#                       data = sugarcane_straw, FUN = mean)
+#
+# xyplot(y ~ N | factor(K), groups = palha, data = averages,
+#        type = "o", as.table = TRUE)
+
+xyplot(fit ~ pot | nit, groups = palha, data = grid,
+       as.table = TRUE, layout = c(NA, 1), type = "o",
+       xlab = leg$N, ylab = leg$y,
+       auto.key = list(title = leg$palha[1], cex.title = 1.1,
+                       text = c(leg$palha[-1]), columns = 2,
+                       points = FALSE, lines = TRUE),
+       uy = grid$upr, ly = grid$lwr,
+       desloc =  0.2 * scale(as.integer(grid$palha), scale = FALSE),
+       cty = "bars", length = 0.02,
+       alpha = 0.25, fill = "gray50",
+       prepanel = prepanel.cbH,
+       panel.groups = panel.cbH,
+       panel = panel.superpose)
 ```
+
+High order interactions present but no smooth effect of numeric factors.
 
 ****
 ## Teor de potássio nas folhas

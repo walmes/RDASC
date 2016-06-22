@@ -34,8 +34,8 @@ trellis.par.set(ps)
 # Carrega o pacote.
 devtools::load_all()
 
-if (dir.exists("~/repos/wzRfun")) {
-    devtools::load_all("~/repos/wzRfun")
-} else {
-    library(wzRfun)
-}
+# if (dir.exists("~/repos/wzRfun")) {
+#     devtools::load_all("~/repos/wzRfun")
+# } else {
+#     library(wzRfun)
+# }
