@@ -1,0 +1,467 @@
+---
+title: >
+  Germination and Vigor of caiaué seeds: American oil palm tree
+author: >
+  [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes) &
+  [Wanderlei Antônio Alves Lima](http://lattes.cnpq.br/8165833589421209 "email: wanderlei.lima@embrapa.br")
+date: "`r Sys.Date()`"
+bibliography: _bibliography.bib
+csl: _abnt_ufpr_2011-mendeley.csl
+vignette: >
+  %\VignetteIndexEntry{Germination and Vigor of caiaué seeds: American oil palm tree}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Session Definition
+
+```{r, message=FALSE, results="hide"}
+# https://github.com/walmes/wzRfun
+# devtools::install_github("walmes/wzRfun")
+library(wzRfun)
+
+pks <- c("lattice",
+         "gridExtra",
+         "doBy",
+         "multcomp",
+         "plyr")
+sapply(pks, library, character.only = TRUE, logical.return = TRUE)
+```
+```{r, eval=FALSE}
+library(wzCoop)
+```
+```{r setup, include=FALSE}
+source("_setup.R")
+```
+
+## Exploratory data analysis
+
+```{r}
+# Object structure.
+data(caiuae_germ)
+str(caiuae_germ)
+
+# Frequencies.
+ftable(xtabs(~umid + temp, data = caiuae_germ))
+
+# Checking if is a complete cases dataset.
+all(complete.cases(caiuae_germ))
+
+# Descriptive measures.
+summary(caiuae_germ)
+
+# A more detailed description.
+# Hmisc::describe(sugarcane_straw)
+
+# Create factors.
+caiuae_germ$temp <- factor(caiuae_germ$temp)
+
+# Número total de sementes avaliadas.
+caiuae_germ$tot <-
+    rowSums(caiuae_germ[, -c(1:2)])
+
+# Germinadas aos 15 dias.
+caiuae_germ$germini <- rowSums(caiuae_germ[, c(3:4)])
+
+# Germinação final.
+caiuae_germ$germ <- rowSums(caiuae_germ[, c(3:7)])
+
+# IVG - índice de velocidade de germinação.
+caiuae_germ$ivg <- rowSums(sweep(x = caiuae_germ[, c(3:7)],
+                                 MARGIN = 2,
+                                 STATS = seq(from = 7, to = 35, by = 7),
+                                 FUN = "/"))
+```
+
+****
+## Visualização e análise exploratória dos dados
+
+```{r visData}
+#-----------------------------------------------------------------------
+# Germinação.
+
+leg <- list("Heat treatment period (days)",
+            "Moisture content (%)")
+
+xyplot(germ/(germ + ngerm) ~ temp, data = caiuae_germ,
+       groups = umid, type = c("p", "a"),
+       auto.key = list(columns = 2, title = leg[[2]],
+                       cex.title = 1.1),
+       xlab = leg[[1]],
+       ylab = "Germination")
+
+xyplot(germ/(germ + ngerm) ~ umid, data = caiuae_germ,
+       groups = temp, type = c("p", "a"),
+       auto.key = list(columns = 3, title = leg[[1]],
+                       cex.title = 1.1),
+       xlab = leg[[2]],
+       ylab = "Germination")
+
+#-----------------------------------------------------------------------
+# Primeira germinação (aos 15 dias).
+
+xyplot(germini/(germini + ngerm) ~ temp, data = caiuae_germ,
+       groups = umid, type = c("p", "a"),
+       auto.key = list(columns = 2, title = leg[[2]], cex.title = 1.1),
+       xlab = leg[[1]],
+       ylab = "Germination in the first count (%)")
+
+xyplot(germini/(germini + ngerm) ~ umid, data = caiuae_germ,
+       groups = temp, type = c("p", "a"),
+       auto.key = list(columns = 3, title = leg[[1]], cex.title = 1.1),
+       xlab = leg[[2]],
+       ylab = "Germination in the first count (%)")
+
+#-----------------------------------------------------------------------
+# IVG.
+
+xyplot(ivg ~ umid, data = caiuae_germ,
+       groups = temp, type = c("p", "a"),
+       auto.key = list(columns = 3, title = leg[[1]], cex.title = 1.1),
+       xlab = leg[[2]],
+       ylab = "Germination speed index")
+
+xyplot(ivg ~ temp, data = caiuae_germ,
+       groups = umid, type = c("p", "a"),
+       auto.key = list(columns = 3, title = leg[[1]], cex.title = 1.1),
+       xlab = leg[[2]],
+       ylab = "Germination speed index")
+```
+
+****
+## Germinação final (36 dias)
+
+Para análise da germinação final, aos 36 dias após estímulom, considerou
+distribuição binomial sendo a germinação de uma semente o evento ou
+desfecho chamado de sucesso. A função de ligação foi a *logit*. Para
+essa análise é necessário o par de variáveis: número de sementes
+germinadas e número de sementes não germinadas ($y$, $n-y$). Para
+acomodar alguma dispersão extra àquela prevista pela distribuição
+binomial, declarou-se o modelo quasi-binomial para correção dos erros
+padrões dos efeitos estimados, bem como o uso da estatística $F$ no
+quadro de análise de *deviance* para os termos do modelo estatístico
+(período, umidade e periodo $\times$ umidade). Tal análise foi feita por
+meio da função `glm()` do programa R para computação estatística
+[@Rsoftware].
+
+Representou-se o efeito de intervalos de umidade como uma variável
+categórica, ao invés de contínua visto que 1) a umidade não é
+precisamente fixada sob um valor mas oscila dentro do intervalo e 2) os
+aparelhos permitem regular apenas nestes 5 níveis, então qualquer
+interpolação numericamente estimada não se pode aplicar na prática, o
+que faz a decisão por um desses níveis algo mais simples (Wanderlei,
+rever esse argumento).
+
+```{r}
+#-----------------------------------------------------------------------
+# Modelo.
+
+m0 <- glm(cbind(germ, ngerm) ~ temp * umid,
+          data = caiuae_germ,
+          family = quasibinomial)
+
+# Resíduos.
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+# Testes hipóteses sequenciais pela estatística F de Wald.
+anova(m0, test = "F")
+
+# Testes hipóteses marginais pela estatística F da razão de
+# verossimilhanças.
+drop1(m0, test = "F", scope = . ~ .)
+```
+
+O modelo quasi-binomial foi ajustado devido à variação extra binomial, o
+que pode ser justificado pela não uniformidade das sementes quanto ao
+tamanho e demais características, o que faz com que apresentem um
+potencial germinativo mais variável que o previsto pela binomial que
+assume probabilidade de sucesso constante em todas as unidades
+experimentais.
+
+O quadro acima indica que o efeito da interação foi significativo pela
+estatística F. Trata-se de um quadro de *deviance*, e não de anova, uma
+vez o modelo quasi-binomial foi considerado para a germinação de
+sementes. Porém, apesar de ser um quadro de deviance, a forma de
+interpretar é praticamente a mesma.
+
+O estudo da interação (ou de efeitos principais, quando o caso) foi
+feito por comparações múltiplas baseadas em contrastes dois à dois
+(contrastes de Tukey, *all pairwise comparisons*). Testes que se baseiam
+em diferença mínima sigficativa entre médias, como Tukey, não podem ser
+aplicados pois os contrastes de médias estimadas (probabilidade de
+germinação) nesse modelo tem precisão diferente, mesmo o número de
+repetições sendo iguais. Sendo assim, aplicou-se o teste *t* para cada
+contraste entre médias e corrigiu-se o p-valor pelo método *fdr* (*false
+discovery rate*). O estudo da interação preconizou o efeito da faixa de
+umidade e cada período de permanência no termogeminador.
+
+Citar esse livro sobre comparações múltiplas:
+<http://www.ievbras.ru/ecostat/Kiril/R/Biblio/R_eng/Bretz%20Multiple%20Comparisons.pdf>,
+<https://books.google.com.br/books?id=U8Xc9zujgcsC&source=gbs_navlinks_s>;
+
+```{r, fig.height=3.5}
+#-----------------------------------------------------------------------
+# Comparações múltiplas de umidade dentro de período.
+
+L <- LSmatrix(m0, effect = c("temp", "umid"))
+grid <- equallevels(attr(L, "grid"), caiuae_germ)
+
+Lu <- by(data = L, INDICES = grid$temp, FUN = as.matrix)
+Lu <- lapply(Lu, FUN = "rownames<-", levels(grid$umid))
+Lu <- ldply(lapply(Lu, apmc, model = m0, test = "fdr", focus = "umid"),
+            .id = "temp")
+Lu[, c("fit", "lwr", "upr")] <-
+    apply(Lu[, c("fit", "lwr", "upr")],
+          MARGIN = 2,
+          FUN = m0$family$linkinv)
+
+segplot(umid ~ lwr + upr | temp, centers = fit,
+        data = Lu, horizontal = FALSE, draw = FALSE,
+        as.table = TRUE, layout = c(NA, 1),
+        txt = Lu$cld,
+        ylab = "Germination",
+        xlab = leg[[2]],
+        panel = function(z, centers, subscripts, txt, ...) {
+            panel.segplot(z = z, centers = centers,
+                          subscripts = subscripts, ...)
+            panel.text(y = centers[subscripts],
+                       x = as.integer(z[subscripts]), pos = 2,
+                       labels = txt[subscripts])
+        })
+
+#-----------------------------------------------------------------------
+# Comparações múltiplas dentro de umidade.
+
+Lt <- by(data = L, INDICES = grid$umid, FUN = as.matrix)
+Lt <- lapply(Lt, FUN = "rownames<-", levels(grid$temp))
+Lt <- ldply(lapply(Lt, apmc, model = m0, test = "fdr", focus = "temp"),
+            .id = "umid")
+Lt[, c("fit", "lwr", "upr")] <-
+    apply(Lt[, c("fit", "lwr", "upr")],
+          MARGIN = 2, FUN = m0$family$linkinv)
+Lt$temp <- factor(Lt$temp, levels = levels(caiuae_germ$temp))
+
+segplot(temp ~ lwr + upr | umid, centers = fit,
+        data = Lt, horizontal = FALSE,
+        draw = FALSE, layout = c(NA, 1), as.table = TRUE,
+        txt = Lt$cld,
+        ylab = "Germination", xlab = leg[[1]],
+        panel = function(z, centers, subscripts, txt, ...) {
+            panel.segplot(z = z, centers = centers,
+                          subscripts = subscripts, ...)
+            panel.text(y = centers[subscripts],
+                       x = as.integer(z[subscripts]), pos = 4,
+                       labels = txt[subscripts])
+        })
+```
+
+Nestes gráficos tem-se as estimativas pontuais de germinação (pontos
+preenchidos) junto ao intervalo de confiança de 95%. Os intervalos são
+assimétricos devido emprego da função inversa da função de ligação
+*logit* nas estimativas que são dadas na escala do preditor
+linear. Letras diferentes ao lado das estimativas indicam contrastes não
+nulos (a 5%) entre parâmetros para um nível fixo do fator indicado nas
+tarjas.
+
+****
+## Germinação inicial (aos 15 dias)
+
+Assim como para a germinação final, para a germinação inicial
+considerou-se distribuição quasi binomial também, pelos mesmos motivos.
+
+```{r}
+#-----------------------------------------------------------------------
+# Modelo.
+
+m0 <- glm(cbind(germini, ngerm) ~ temp * umid,
+          data = caiuae_germ,
+          family = quasibinomial)
+
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+# Testes hipóteses sequenciais pela estatística F de Wald.
+anova(m0, test = "F")
+
+# Testes hipóteses marginais pela estatística F da razão de
+# verossimilhanças.
+drop1(m0, test = "F", scope = . ~ .)
+```
+
+```{r, fig.height=3.5}
+#-----------------------------------------------------------------------
+# Comparações múltiplas de umidade dentro de período.
+
+L <- LSmatrix(m0, effect = c("temp", "umid"))
+grid <- equallevels(attr(L, "grid"), caiuae_germ)
+Lu <- by(data = L, INDICES = grid$temp, FUN = as.matrix)
+Lu <- lapply(Lu, FUN = "rownames<-", levels(grid$umid))
+Lu <- ldply(lapply(Lu, apmc, model = m0, test = "fdr", focus = "umid"),
+            .id = "temp")
+Lu[, c("fit", "lwr", "upr")] <-
+    apply(Lu[, c("fit", "lwr", "upr")],
+          MARGIN = 2, FUN = m0$family$linkinv)
+
+segplot(umid ~ lwr + upr | temp,
+        centers = fit, data = Lu,
+        horizontal = FALSE, draw = FALSE,
+        layout = c(NA, 1), as.table = TRUE,
+        txt = Lu$cld,
+        ylab = "Germination in the first count",
+        xlab = leg[[2]],
+        panel = function(z, centers, subscripts, txt, ...) {
+            panel.segplot(z = z, centers = centers,
+                          subscripts = subscripts, ...)
+            panel.text(y = centers[subscripts],
+                       x = as.integer(z[subscripts]), pos = 2,
+                       labels = txt[subscripts])
+        })
+
+#-----------------------------------------------------------------------
+# Comparações múltiplas dentro de umidade.
+
+Lt <- by(data = L, INDICES = grid$umid, FUN = as.matrix)
+Lt <- lapply(Lt, FUN = "rownames<-", levels(grid$temp))
+Lt <- ldply(lapply(Lt, apmc, model = m0, test = "fdr", focus = "temp"),
+            .id = "umid")
+Lt[, c("fit", "lwr", "upr")] <-
+    apply(Lt[, c("fit", "lwr", "upr")],
+          MARGIN = 2, FUN = m0$family$linkinv)
+Lt$temp <- factor(Lt$temp, levels = levels(caiuae_germ$temp))
+
+segplot(temp ~ lwr + upr | umid,
+        centers = fit, data = Lt, horizontal = FALSE,
+        draw = FALSE, layout = c(NA, 1), as.table = TRUE,
+        txt = Lt$cld,
+        ylab = "Germination in the first count",
+        xlab = leg[[1]],
+        panel = function(z, centers, subscripts, txt, ...) {
+            panel.segplot(z = z, centers = centers,
+                          subscripts = subscripts, ...)
+            panel.text(y = centers[subscripts],
+                       x = as.integer(z[subscripts]), pos = 4,
+                       labels = txt[subscripts])
+        })
+```
+
+A germinação inicial se aplicam as mesmas interpretações para os
+gráficos. Vale salientar que a cela período de 100 dias e umidade 18-19
+não apresentou germinação em nenhuma repetição. Reescreveu-se umas das
+repetições como tendo 1 semente germinada para evitar problemas de
+estimação, visto que a probabilidade de sucesso tem qus ser maior que
+zero ($p > 0$).
+
+****
+## IVG - índice de velocidade de germinação
+
+O indice de velocidade de gerimanação, embora seja uma função de
+variáveis discretas, assumiu-se distribuição normal (mesmo porque
+trata-se de uma soma de termos). No entanto, se a análise gráfica dos
+resíduos indicar fuga dos pressupostos, uma transformação da família
+Box-Cox será aplicada para fazer com que os pressupostos, na escala
+transformada, sejam atendidos. Todas as inferências serão feitos na
+escala na qual os pressupostos são atendidos e para facilidade de
+exposição, os valores médios serão transformados pra escala original da
+variável.
+
+```{r}
+#-----------------------------------------------------------------------
+# Model.
+
+m0 <- lm(ivg + 0.5 ~ temp * umid,
+         data = caiuae_germ)
+
+# Resíduos.
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+# Transformação Box-Cox.
+MASS::boxcox(m0)
+abline(v = 0.5, col = "red")
+
+m0 <- lm(sqrt(ivg + 0.5) ~ temp * umid,
+         data = caiuae_germ)
+
+# Resíduos.
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+# Testes hipóteses sequenciais pela estatística F de Wald.
+anova(m0)
+```
+
+Para atender os pressupostos, analisou-se a raíz quadrada do IVG mais
+0.5, para tornar a variável positiva. Nessa escala, tem-se interação
+entre período e umidade. Para comparações múltiplas, fez contranstes
+dois a dois com correção do p-valor pelo método *fdr*.
+
+```{r, fig.height=3.5}
+#-----------------------------------------------------------------------
+# Comparações múltiplas
+
+L <- LSmatrix(m0, effect = c("temp", "umid"))
+grid <- equallevels(attr(L, "grid"), caiuae_germ)
+
+Lu <- by(data = L, INDICES = grid$temp, FUN = as.matrix)
+Lu <- lapply(Lu, FUN = "rownames<-", levels(grid$umid))
+Lu <- ldply(lapply(Lu, apmc, model = m0, test = "fdr", focus = "umid"),
+            .id = "temp")
+Lu[, c("fit", "lwr", "upr")] <-
+    apply(Lu[, c("fit", "lwr", "upr")],
+          MARGIN = 2, FUN = function(x) x^2 - 0.5)
+
+segplot(umid ~ lwr + upr | temp, centers = fit, data = Lu,
+        horizontal = FALSE,
+        draw = FALSE, layout = c(NA, 1),
+        txt = Lu$cld, as.table = TRUE,
+        ylab = "Germination speed index",
+        xlab = leg[[2]],
+        panel = function(z, centers, subscripts, txt, ...) {
+            panel.segplot(z = z, centers = centers,
+                          subscripts = subscripts, ...)
+            panel.text(y = centers[subscripts],
+                       x = as.integer(z[subscripts]), pos = 2,
+                       labels = txt[subscripts])
+        })
+
+#-----------------------------------------------------------------------
+
+Lt <- by(data = L, INDICES = grid$umid, FUN = as.matrix)
+Lt <- lapply(Lt, FUN = "rownames<-", levels(grid$temp))
+Lt <- ldply(lapply(Lt, apmc, model = m0, test = "fdr", focus = "temp"),
+            .id = "umid")
+Lt[, c("fit", "lwr", "upr")] <-
+    apply(Lt[, c("fit", "lwr", "upr")],
+          MARGIN = 2, FUN = function(x) x^2 - 0.5)
+Lt$temp <- factor(Lt$temp, levels = levels(caiuae_germ$temp))
+
+segplot(temp ~ lwr + upr | umid,
+        centers = fit, data = Lt, horizontal = FALSE,
+        draw = FALSE, layout = c(NA, 1), as.table = TRUE,
+        txt = Lt$cld,
+        ylab = "Germination speed index",
+        xlab = leg[[1]],
+        panel = function(z, centers, subscripts, txt, ...) {
+            panel.segplot(z = z, centers = centers,
+                          subscripts = subscripts, ...)
+            panel.text(y = centers[subscripts],
+                       x = as.integer(z[subscripts]), pos = 4,
+                       labels = txt[subscripts])
+        })
+```
+
+****
+## Session information
+
+```{r, echo=FALSE, results="hold"}
+cat(format(Sys.time(), format = "%A, %d de %B de %Y, %H:%M"),
+    "----------------------------------------", sep = "\n")
+sessionInfo()
+```
+
+## References
