@@ -1,0 +1,680 @@
+---
+title: >
+  Curva de retenção de Água na Cultura do Abacaxizeiro em Função da
+  Cobertura do Solo e Aplicação de Gesso
+author: >
+  [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes) &
+  [Milson Evaldo Serafim](http://lattes.cnpq.br/8676820051946774)
+date: "`r Sys.Date()`"
+vignette: >
+  %\VignetteIndexEntry{Curva de retenção de Água na Cultura do Abacaxizeiro em Função da Cobertura do Solo e Aplicação de Gesso}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+****
+## Definições da sessão
+
+```{r, message=FALSE, results="hide"}
+# https://github.com/walmes/wzRfun
+# devtools::install_github("walmes/wzRfun")
+library(wzRfun)
+
+pkg <- c("lattice",
+         "latticeExtra",
+         "nlme",
+         "reshape",
+         "plyr",
+         "doBy",
+         "multcomp")
+sapply(pkg, library, character.only = TRUE, logical.return = TRUE)
+```
+```{r, eval=FALSE}
+library(wzCoop)
+```
+```{r setup, include=FALSE}
+source("_setup.R")
+```
+
+****
+## Importação dos dados
+
+```{r}
+#-----------------------------------------------------------------------
+# Lendo arquivos de dados.
+
+data(pineapple_swrc)
+str(pineapple_swrc)
+
+# Converte variáveis para fator.
+pineapple_swrc <-
+    transform(pineapple_swrc,
+              gesso = factor(gesso),
+              ue = interaction(cober, gesso, prof, varie, bloc,
+                               drop = TRUE, sep = ":"))
+
+# Passa a tensão 0 para 0.01 para não ter problemas com o log().
+pineapple_swrc$tens[pineapple_swrc$tens == 0] <- 0.01
+pineapple_swrc$ltens <- log10(pineapple_swrc$tens)
+
+# Mostra a estrutura do objeto.
+str(pineapple_swrc)
+```
+
+****
+## Análise exploratória
+
+```{r, fig.width=8, fig.height=7}
+#-----------------------------------------------------------------------
+# Análise exploratória.
+
+# Identifica as unidades com a combinação tripla dos fatores.
+pineapple_swrc$gescobpro <-
+    with(pineapple_swrc, interaction(as.integer(gesso),
+                                     as.integer(cober),
+                                     as.integer(prof)))
+
+p1 <- xyplot(umid ~ tens | gescobpro + varie,
+             data = pineapple_swrc,
+             groups = bloc, type = "b",
+             ylab = "Moisture",
+             xlab = "log 10 of matric tension",
+             scales = list(x = list(log = 10)),
+             xscale.components = xscale.components.log10ticks)
+useOuterStrips(p1)
+
+# Número de curvas.
+nlevels(pineapple_swrc$ue)
+
+#-----------------------------------------------------------------------
+# Identificar os pontos atípicos.
+
+# i <- 1:nrow(pineapple_swrc)
+# useOuterStrips(p1)
+# panel.locs <- trellis.currentLayout()
+# outliers <- vector(mode = "list",
+#                    length = prod(dim(panel.locs)))
+# for (row in 1:nrow(panel.locs)) {
+#     for (column in 1:ncol(panel.locs)) {
+#         if (panel.locs[row, column] > 0) {
+#             trellis.focus("panel",
+#                           row = row,
+#                           column = column,
+#                           highlight = TRUE)
+#             wp <- panel.locs[row, column]
+#             obsv <- panel.identify()
+#             # print(obsv)
+#             j <- column + (row - 1) * nrow(panel.locs)
+#             # print(j)
+#             outliers[[j]] <- i[obsv]
+#             trellis.unfocus()
+#         }
+#     }
+# }
+
+# Clicar com o botão direito em cada cela (de baixo para cima, esquerda
+# para direita) para identificar o ponto outliear. Clicar com o botão
+# direito para passara para a próxima cela.
+
+# outliers
+# r <- unlist(outliers)
+# dput(r)
+
+# Outiliers identificados visualmente.
+out <- c(106L, 151L, 1397L, 513L, 717L, 725L)
+pineapple_swrc <- pineapple_swrc[-out, ]
+```
+
+****
+## Ajuste de forma interativa
+
+```{r, eval=FALSE}
+#-----------------------------------------------------------------------
+# Ajuste com rp.nls.
+
+model <- umid ~ Ur + (Us - Ur)/(1 + exp(n * (alp + ltens)))^(1 - 1/n)
+start <- list(Ur = c(0.1,   0, 0.4),
+              Us = c(0.4, 0.1, 0.8),
+              alp =c(1,    -5,   6),
+              n =  c(1.5,   1,   4))
+
+library(rpanel)
+
+cra.fit <- rp.nls(model = model,
+                  data = pineapple_swrc,
+                  start = start)
+
+summary(cra.fit)
+```
+
+****
+## Ajuste por unidade experimental
+
+O ajuste foi feito considerando a seguinte parametrização do modelo van
+Genuchten
+
+$$
+  U(x) = U_r + \frac{U_s - U_r}{(1 + \exp\{n(\alpha + x)\})^{1 - 1/n}}
+$$
+
+em que $U$ é umidade (m<sup>3</sup> m<sup>-3</sup>) do solo, $x$ é o log
+na base 10 da tensão matricial aplicada (kPa), $U_r$ é a umidade
+residual (assíntota inferior), $U_s$ é a umidade de satuação (assíntota
+superior), $\alpha$ e $n$ são parâmetros empíricos de forma da curva de
+retenção de água. Uma vez conhecido valores para as quatidades
+mencionadas, são obtidos
+
+$$
+\begin{align*}
+  S   &= -n\cdot \frac{U_s - U_r}{(1 + 1/m)^{m + 1}} \newline
+  I   &= -\alpha - \log(m)/n \newline
+  U_I &= U(x = I)
+\end{align*}
+$$
+
+em que $S$ é a taxa no ponto de inflexão, parâmetro que é tido como
+central para avaliação da qualidade física do solo, bem como $I$ que
+corresponde ao log da tensão no ponto de inflexão da curva de retenção
+de água do solo. A umidade correspondente a tensão no ponto de inflexão
+é representada por $U_I$.
+
+```{r}
+#-----------------------------------------------------------------------
+# Ajustar uma única curva.
+
+model <- umid ~ Ur + (Us - Ur)/(1 + exp(n * (alp + ltens)))^(1 - 1/n)
+start <- list(Ur = 0.1, Us = 0.4, alp = -0.5, n = 4)
+
+plot(umid ~ ltens, data = pineapple_swrc)
+with(start, curve(Ur + (Us - Ur)/(1 + exp(n * (alp + x)))^(1 - 1/n),
+                  add = TRUE))
+
+n00 <- nls(model, data = pineapple_swrc, start = start)
+coef(n00)
+
+#-----------------------------------------------------------------------
+# Ajudar para cada unidade experimental.
+
+# nlevels(pineapple_swrc$ue)
+db <- groupedData(umid ~ ltens | ue,
+                  data = pineapple_swrc, order.groups = FALSE)
+str(db)
+
+n0 <- nlsList(model = model,
+              data = db,
+              start = as.list(coef(n00)))
+c0 <- coef(n0)
+
+# Matriz de diagramas de dispersão.
+pairs(c0)
+```
+
+```{r}
+#-----------------------------------------------------------------------
+# Correr análises de variância considerando parâmetros como variáveis
+# resposta.
+
+aux <- do.call(rbind, strsplit(rownames(c0), split = ":"))
+colnames(aux) <- c("cober", "gesso", "prof", "varie", "bloc")
+params <- cbind(equallevels(as.data.frame(aux), pineapple_swrc), c0)
+rownames(params) <- NULL
+str(params)
+
+#-----------------------------------------------------------------------
+# Manova.
+
+m0 <- aov(cbind(Ur, Us, n, alp) ~ cober * gesso * prof * varie,
+          data = params)
+anova(m0)
+```
+
+****
+## Ur: umidade residual
+
+```{r}
+#-----------------------------------------------------------------------
+# Análise do Ur.
+
+m0 <- lm(Ur ~ (cober + gesso + prof + varie)^2, data = params)
+par(mfrow = c(2,2)); plot(m0); layout(1)
+# MASS::boxcox(m0)
+
+im <- influence.measures(m0)
+# summary(im)
+
+del <- im$is.inf[, "dffit"]
+m0 <- update(m0, data = params[!del, ])
+anova(m0)
+
+#-----------------------------------------------------------------------
+# Desdobramento.
+
+# Estimativas para as profundidades.
+Xm <- LSmatrix(m0, effect = "prof")
+rownames(Xm) <- levels(db$prof)
+g1 <- apmc(X = Xm, model = m0, focus = "prof")
+g1
+
+# Desdobrar gesso dentro de cobertura.
+LSmeans(m0, effect = c("gesso", "cober"))
+Xm <- LSmatrix(m0, effect = c("gesso", "cober"))
+grid <- equallevels(attr(Xm, "grid"), db)
+
+L <- by(Xm, INDICES = grid$cober, FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(grid$gesso))
+g2 <- lapply(L, apmc, model = m0, focus = "gesso")
+g2
+
+g2 <- ldply(g2)
+names(g2)[1] <- "cober"
+g2 <- equallevels(g2, db)
+```
+
+```{r, fig.width=6, fig.height=5}
+#-----------------------------------------------------------------------
+# Gráfico.
+
+p1 <- segplot(prof ~ lwr + upr, centers = fit, data = g1, draw = FALSE,
+              xlab = expression("Residual moisture"~(m^3~m^{-3})),
+              ylab = "Soil layer (m)") +
+    layer(panel.text(x = centers, y = z, labels = g1$cld, pos = 3))
+
+p2 <- segplot(cober ~ lwr + upr, centers = fit, data = g2, draw = FALSE,
+              groups = g2$gesso, pch = g2$gesso, gap = 0.1,
+              panel = panel.groups.segplot,
+              xlab = expression("Residual moisture"~(m^3~m^{-3})),
+              ylab = "Cover crop",
+              key = list(columns = 2, type = "o", divide = 1,
+                         title = expression("Gypsum"~(ton~ha^{-1})),
+                         cex.title = 1.1,
+                         lines = list(pch = 1:2),
+                         text = list(levels(g2$gesso)))) +
+    layer(panel.text(x = centers,
+                     y = as.numeric(z) +
+                         gap * (2 * ((as.numeric(groups) - 1)/
+                                     (nlevels(groups) - 1)) - 1),
+                     labels = cld, pos = 3), data = g2)
+p2
+
+# x11(width = 6, height = 5)
+d <- 0.6
+plot(p1, position = c(0, d, 1, 1), more = TRUE)
+plot(p2, position = c(0, 0, 1, d), more = FALSE)
+```
+
+****
+## Us: umidade de saturação
+
+```{r}
+#-----------------------------------------------------------------------
+# Análise do Us.
+
+m0 <- lm(Us ~ (cober + gesso + prof + varie)^2, data  =  params)
+par(mfrow = c(2,2)); plot(m0); layout(1)
+# MASS::boxcox(m0)
+
+im <- influence.measures(m0)
+# summary(im)
+
+del <- im$is.inf[, "dffit"]
+m0 <- update(m0, data = params[!del,])
+anova(m0)
+
+#-----------------------------------------------------------------------
+# Desdobramento.
+
+# Desdobrar prof dentro de varie.
+LSmeans(m0, effect = c("prof", "varie"))
+Xm <- LSmatrix(m0, effect = c("prof", "varie"))
+grid <- equallevels(attr(Xm, "grid"), db)
+
+L <- by(Xm, INDICES = grid$varie, FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(grid$prof))
+g2 <- lapply(L, apmc, model = m0, focus = "prof")
+g2
+
+g2 <- ldply(g2); names(g2)[1] <- "varie"
+g2 <- equallevels(g2, db)
+```
+
+```{r, fig.width=6, fig.height=4}
+#-----------------------------------------------------------------------
+# Gráfico.
+
+p2 <- segplot(varie ~ lwr + upr, centers = fit, data = g2, draw = FALSE,
+              groups = g2$prof, pch = g2$prof, gap = 0.1,
+              panel = panel.groups.segplot,
+              xlab = expression("Saturation moisture"~(m^3~m^{-3})),
+              ylab = expression(Gypsum~(ton~ha^{-1})),
+              key = list(columns = 2, type = "o", divide = 1,
+                  title = "Soil layer (m)", cex.title = 1.1,
+                  lines = list(pch = 1:2),
+                  text = list(levels(g2$prof)))) +
+    layer(panel.text(x = centers,
+                     y = as.numeric(z) +
+                         gap * (2 * ((as.numeric(groups) - 1)/
+                                     (nlevels(groups) - 1)) - 1),
+                     labels = cld, pos = 3), data = g2)
+p2
+```
+
+****
+## alpha: parâmetro empírico da curva de retenção
+
+```{r}
+#-----------------------------------------------------------------------
+# Análise do alpha.
+
+# min(params$alp)
+# Para atender os pressupostos, somou-se 1.5 para não ter valores
+# negativos e elevou-se ao quadrado.
+
+m0 <- lm(c(alp + 1.5)^2 ~ (cober + gesso + prof + varie)^2,
+         data = params)
+par(mfrow = c(2,2)); plot(m0); layout(1)
+# MASS::boxcox(m0)
+
+im <- influence.measures(m0)
+# summary(im)
+
+del <- im$is.inf[, "dffit"]
+m0 <- update(m0, data = params[!del,])
+anova(m0)
+
+# Como o alpha é um parâmetro empírico, de quase nenhum significado
+# aplicado, não será feito o desdobramento da interação. As diferenças
+# em alpha podem implicar em diferenças no parâmetro S que é mais
+# interpretável. Abaixo segem as estimativas.
+
+# Os valores abaixo são para simples conferência. Lembrar que estão na
+# escala transformada y_t = (y + 1.5)^2.
+
+LSmeans(m0, effect = c("prof", "varie"))
+LSmeans(m0, effect = c("gesso", "cober"))
+LSmeans(m0, effect = c("cober", "varie"))
+```
+
+****
+## n: parâmetro empírico da curva de retenção
+
+```{r}
+#-----------------------------------------------------------------------
+# Análise do n (na escala log para atender pressupostos).
+
+m0 <- lm(log(n) ~ (cober + gesso + prof + varie)^2, data = params)
+par(mfrow = c(2,2)); plot(m0); layout(1)
+# MASS::boxcox(m0)
+
+im <- influence.measures(m0)
+# summary(im)
+
+del <- im$is.inf[, "dffit"]
+m0 <- update(m0, data = params[!del,])
+anova(m0)
+
+# Desdobramento não realizado por argumentos iguais aos do parâmetro
+# alpha.
+
+LSmeans(m0, effect = c("gesso", "cober"))
+```
+
+****
+## Parâmetro S: taxa da curva de retenção no ponto de inflexão
+
+```{r}
+#-----------------------------------------------------------------------
+# Parâmetro S: slope da curva de retenção no ponto de inflexão.
+
+# Calcular o S a partir das estimativas dos parâmetros da CRA.
+params$S <- with(params, {
+    m <- 1 - 1/n
+    d <- Us - Ur
+    -d * n * (1 + 1/m)^(-m - 1)
+})
+
+m0 <- lm(S ~ (cober + gesso + prof + varie)^2, data = params)
+par(mfrow = c(2,2)); plot(m0); layout(1)
+# MASS::boxcox(m0)
+
+im <- influence.measures(m0)
+# summary(im)
+
+del <- im$is.inf[,"dffit"]
+m0 <- update(m0, data = params[!del, ])
+anova(m0)
+
+# Não existe efeito dos fatores experimentais sobre o S.
+LSmeans(m0)
+```
+
+****
+## I: tensão correspondente ao ponto de inflexão
+
+```{r}
+#-----------------------------------------------------------------------
+# Parâmetro I: tensão correspondente ao ponto de inflexão.
+
+# Calcular o I a partir das estimativas dos parâmetros da CRA.
+params$I <- with(params, {
+    m <- 1 - 1/n
+    -alp - log(m)/n
+})
+
+# Análise sobre o recíproco de I para atender os pressupostos.
+m0 <- lm(1/I ~ (cober + gesso + prof + varie)^2, data = params)
+par(mfrow = c(2,2)); plot(m0); layout(1)
+# MASS::boxcox(m0)
+
+im <- influence.measures(m0)
+# summary(im)
+
+del <- im$is.inf[, "dffit"]
+m0 <- update(m0, data = params[!del, ])
+anova(m0)
+
+#-----------------------------------------------------------------------
+# Desdobramentos.
+
+# Desdobrar prof dentro de varie.
+LSmeans(m0, effect = c("prof", "varie"))
+Xm <- LSmatrix(m0, effect = c("prof", "varie"))
+grid <- equallevels(attr(Xm, "grid"), db)
+
+L <- by(Xm, INDICES = grid$varie, FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(grid$prof))
+g1 <- lapply(L, apmc, model = m0, focus = "prof")
+g1
+
+g1 <- ldply(g1); names(g1)[1] <- "varie"
+g1 <- equallevels(g1, db)
+g1[, c("fit","lwr","upr")] <- exp(1/g1[, c("fit","lwr","upr")])
+
+# Desdobrar gesso dentro de cobertura.
+LSmeans(m0, effect = c("gesso", "cober"))
+Xm <- LSmatrix(m0, effect = c("gesso", "cober"))
+grid <- equallevels(attr(Xm, "grid"), db)
+
+L <- by(Xm, INDICES = grid$cober, FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(grid$gesso))
+g3 <- lapply(L, apmc, model = m0, focus = "gesso")
+g3
+
+g3 <- ldply(g3); names(g3)[1] <- "cober"
+g3 <- equallevels(g3, db)
+g3[, c("fit","lwr","upr")] <- exp(1/g3[, c("fit","lwr","upr")])
+```
+
+```{r, fig.width=6, fig.height=7}
+#-----------------------------------------------------------------------
+# Gráfico.
+
+p1 <- segplot(varie ~ lwr + upr, centers = fit, data = g1, draw = FALSE,
+              groups = g1$prof, pch = g1$prof, gap = 0.1,
+              panel = panel.groups.segplot,
+              # xlab = expression(log ~ da ~ tensão ~ (kPa)),
+              xlab = expression(Tension ~ (kPa)),
+              ylab = "Variety",
+              key = list(columns = 2, type = "o", divide = 1,
+                  title = "Soil layer (m)", cex.title = 1.1,
+                  lines = list(pch = 1:2),
+                  text = list(levels(g1$prof)))) +
+    layer(panel.text(x = centers,
+                     y = as.numeric(z) +
+                         gap * (2 * ((as.numeric(groups) - 1)/
+                                     (nlevels(groups) - 1)) - 1),
+                     labels = cld, pos = 3), data = g1)
+
+p3 <- segplot(cober ~ lwr + upr, centers = fit, data = g3, draw = FALSE,
+              groups = g3$gesso, pch = g3$gesso, gap = 0.1,
+              panel = panel.groups.segplot,
+              # xlab = expression(log ~ da ~ tensão ~ (kPa)),
+              xlab = expression(Tension ~ (kPa)),
+              ylab = "Crop cover",
+              key = list(columns = 2, type = "o", divide = 1,
+                         title = expression(Gypsum ~ (ton ~ ha^{-1})),
+                         cex.title = 1.1,
+                         lines = list(pch = 1:2),
+                         text = list(levels(g3$gesso)))) +
+    layer(panel.text(x = centers,
+                     y = as.numeric(z) +
+                         gap * (2 * ((as.numeric(groups) - 1)/
+                                     (nlevels(groups) - 1)) - 1),
+                     labels = cld, pos = 3), data = g3)
+
+plot(p3, position = c(0, 0.6, 1, 1), more = TRUE)
+plot(p1, position = c(0, 0, 1, 0.6), more = FALSE)
+```
+
+****
+## Parâmetro CAD: Capacidade de água disponível
+
+```{r}
+#-----------------------------------------------------------------------
+# Parâmetro CAD: Conteúdo de água disponível (CAD  =  UI-Ur).
+
+# Calcular a umidade na tensão e a diferência de umidade com relação à
+# residual.
+params$UI <- with(params, {
+    UI <- Ur + (Us - Ur)/(1 + exp(n*(alp + I)))^(1 - 1/n)
+    UI - Ur
+})
+
+m0 <- lm(UI ~ (cober + gesso + prof + varie)^2, data = params)
+par(mfrow = c(2,2)); plot(m0); layout(1)
+# MASS::boxcox(m0)
+
+im <- influence.measures(m0)
+# summary(im)
+
+del <- im$is.inf[, "dffit"]
+m0 <- update(m0, data = params[!del,])
+anova(m0)
+
+#--------------------------------------------
+# Desdobramentos.
+
+# Desdobrar prof dentro de varie.
+LSmeans(m0, effect = c("prof", "varie"))
+Xm <- LSmatrix(m0, effect = c("prof", "varie"))
+grid <- equallevels(attr(Xm, "grid"), db)
+
+L <- by(Xm, INDICES = grid$varie, FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(grid$prof))
+g1 <- lapply(L, apmc, model = m0, focus = "prof")
+g1
+
+g1 <- ldply(g1)
+names(g1)[1] <- "varie"
+g1 <- equallevels(g1, db)
+
+# Desdobrar gesso dentro de cobertura.
+LSmeans(m0, effect = c("gesso", "cober"))
+Xm <- LSmatrix(m0, effect = c("gesso", "cober"))
+grid <- equallevels(attr(Xm, "grid"), db)
+
+L <- by(Xm, INDICES = grid$cober, FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(grid$gesso))
+g3 <- lapply(L, apmc, model = m0, focus = "gesso")
+g3
+
+g3 <- ldply(g3)
+names(g3)[1] <- "cober"
+g3 <- equallevels(g3, db)
+```
+
+```{r, fig.width=6, fig.height=7}
+#-----------------------------------------------------------------------
+# Gráfico.
+
+p1 <- segplot(varie ~ lwr + upr, centers = fit, data = g1, draw = FALSE,
+              groups = g1$prof, pch = g1$prof, gap = 0.1,
+              panel = panel.groups.segplot,
+              xlab = expression(
+                  "Available water content"~ (m^3~m^{-3})),
+              ylab = "Variety",
+              key = list(columns = 2, type = "o", divide = 1,
+                  title = "Soil layer (m)", cex.title = 1.1,
+                  lines = list(pch = 1:2),
+                  text = list(levels(g1$prof)))) +
+    layer(panel.text(x = centers,
+                     y = as.numeric(z) +
+                         gap * (2 * ((as.numeric(groups) - 1)/
+                                     (nlevels(groups) - 1)) - 1),
+                     labels = cld, pos = 3), data = g1)
+
+p3 <- segplot(cober ~ lwr + upr, centers = fit, data = g3, draw = FALSE,
+              groups = g3$gesso, pch = g3$gesso, gap = 0.1,
+              panel = panel.groups.segplot,
+              xlab = expression(
+                  "Available water content" ~ (m^3 ~ m^{-3})),
+              ylab = "Crop cover",
+              key = list(columns = 2, type = "o", divide = 1,
+                         title = expression(Gypsum ~ (ton ~ ha^{-1})),
+                         cex.title = 1.1,
+                  lines = list(pch = 1:2),
+                  text = list(levels(g3$gesso)))) +
+    layer(panel.text(x = centers,
+                     y = as.numeric(z) +
+                         gap * (2 * ((as.numeric(groups) - 1)/
+                                     (nlevels(groups) - 1)) - 1),
+                     labels = cld, pos = 3), data = g3)
+
+plot(p3, position = c(0, 0.6, 1, 1), more = TRUE)
+plot(p1, position = c(0, 0, 1, 0.6), more = FALSE)
+```
+
+```{r, include=FALSE, eval=FALSE}
+#-----------------------------------------------------------------------
+# Modelo de efeito aleatório.
+
+n1 <- nlme(model, data = pineapple_swrc,
+           fixed = Ur + Us + n + alp ~ 1,
+           random = Us ~ 1 | ue,
+           start = coef(cra.fit))
+summary(n1)
+
+#--------------------------------------------
+
+dput(round(coef(cra.fit), 4))
+
+n2 <- nlme(model, data = pineapple_swrc,
+           fixed = Ur + Us + n + alp ~ prof,
+           random = Us ~ 1 | ue,
+           start = c(
+               0.0925, 0,
+               0.3672, 0,
+               4.0623, 0,
+               -0.6803, 0))
+
+summary(n2)
+anova(n2, n1)
+```
+
+****
+## Informações da sessão
+
+```{r, echo=FALSE, results="hold"}
+cat(format(Sys.time(), format = "%A, %d de %B de %Y, %H:%M"),
+    "----------------------------------------", sep = "\n")
+sessionInfo()
+```
