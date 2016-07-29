@@ -1,5 +1,5 @@
 before_script:
-  - apt-get update && apt-get install r-cran-tkrplot bwidget -y
+  - apt-get update && apt-get install tk8.5 tcl8.5 r-cran-tkrplot bwidget -y
 
 R_build_package:
   script:
