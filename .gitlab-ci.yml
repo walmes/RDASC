@@ -1,6 +1,5 @@
 before_script:
-  - apt-cache search r-cran-tkrplot
-  - apt-get install r-cran-tkrplot bwidget -y
+  - apt-get install geany -y
 
 R_build_package:
   script:
