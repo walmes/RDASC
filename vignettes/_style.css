@@ -6,7 +6,6 @@ body, td, caption {
 }
 
 body {
-    width: 800px;
     margin: auto;
 }
 
@@ -72,6 +71,16 @@ a {
 }
 
 a:hover, a:focus {
-             color: #004E4E;
-             text-decoration: underline;
-         }
+    color: #004E4E;
+    text-decoration: underline;
+}
+
+.list-group-item.active,
+.list-group-item.active:focus,
+.list-group-item.active:hover {
+    background-color: #149494;
+}
+
+.tocify-header {
+    text-indent: 0px;
+}
