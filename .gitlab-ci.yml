@@ -1,5 +1,5 @@
 before_script:
-  - mkdir -p ~/R-tests/
+  - sudo apt-get install r-cran-tkrplot bwidget
 
 R_build_package:
   script:
