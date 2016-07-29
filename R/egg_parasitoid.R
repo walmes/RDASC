@@ -1,24 +1,23 @@
 #' @name egg_parasitoid
 #' @title Efeito de Inseticidas no Parasitismo de \emph{Trichogramma} em
-#'     ovos de lagarta
+#'     Ovos de Lagartas da Soja
 #'
 #' @description Resultados de um experimento que estudou o efeito de 7
 #'     inseticidas sobre o parasitismo de duas espécies de
 #'     \emph{Trichogramma} em ovos de dois hospedeiros que são lagartas
-#'     defolhadoras pragas na cultura do soja. O experimento foi
-#'     instalado em delineamento inteiramente casualizado com 20
-#'     repetições com tratamentos proveninetes do arranjo em esquema
-#'     fatorial completo \eqn{7 \times 2 \times 2} (28 celas),
-#'     perfazendo 560 obsevações.
+#'     defolhadoras na cultura do soja. O experimento foi instalado em
+#'     delineamento inteiramente casualizado com 20 repetições com
+#'     tratamentos proveninetes do arranjo em esquema fatorial completo
+#'     \eqn{7 \times 2 \times 2} (28 celas), perfazendo 560 obsevações.
 #'
 #' A unidade experimental foi uma cartela com ovos do hospedeiro
-#'     previamente tratados com um fungicida. Uma fêmea de uma das
-#'     espécies de parasitóide era exporta à cartela para parasitá-lo
+#'     previamente tratados com um inseticida. Uma fêmea de uma das
+#'     espécies de parasitóide era colocada com cartela para parasitá-lo
 #'     dentro de um recipiente. Depois de 24 horas era verificado se a
-#'     fêmea estava viva. Ela era então removida do recipiente e os ovos
-#'     foram observados diáriamente até que acontecesse a emergência dos
-#'     ovos parasitados. O número de ovos parasitados, total de
-#'     parasitóides mortos e nascidos (macho e fêmea) e número de dias
+#'     fêmea estava viva. Ela era então removida do recipiente. Os ovos
+#'     da cartela foram observados diáriamente até que acontecesse a
+#'     emergência dos parasitóides. O número de ovos parasitados, total
+#'     de parasitóides mortos e nascidos de cada sexo e número de dias
 #'     de incubação dos parasitóides foram algumas das variáveis
 #'     registradas no experimento.
 #'
