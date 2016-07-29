@@ -1,4 +1,5 @@
 before_script:
+  - sudo apt-cache search r-cran-tkrplot
   - apt-get install r-cran-tkrplot bwidget -y
 
 R_build_package:
