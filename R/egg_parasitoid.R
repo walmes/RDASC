@@ -1,29 +1,31 @@
 #' @name egg_parasitoid
-#' @title Efeito de Inseticidas no Parasitismo de \emph{Trichogramma} em
-#'     Ovos de Lagartas da Soja
+#' @title Efeito de Inseticidas no Parasitismo de \emph{Trichogramma}
+#'     em Ovos de Lagartas da Soja
+#' @description Resultados de um experimento que estudou o efeito de 6
+#'     inseticidas (mais a testemunha) sobre o parasitismo de duas
+#'     espécies de \emph{Trichogramma} em ovos de dois hospedeiros que
+#'     são lagartas defolhadoras na cultura da soja. O experimento foi
+#'     instalado em delineamento inteiramente casualizado com 20
+#'     repetições. Os tratamentos são proveninetes do arranjo em esquema
+#'     fatorial completo \eqn{7 \times 2 \times 2} (28 celas),
+#'     perfazendo 560 obsevações.
 #'
-#' @description Resultados de um experimento que estudou o efeito de 7
-#'     inseticidas sobre o parasitismo de duas espécies de
-#'     \emph{Trichogramma} em ovos de dois hospedeiros que são lagartas
-#'     defolhadoras na cultura do soja. O experimento foi instalado em
-#'     delineamento inteiramente casualizado com 20 repetições com
-#'     tratamentos proveninetes do arranjo em esquema fatorial completo
-#'     \eqn{7 \times 2 \times 2} (28 celas), perfazendo 560 obsevações.
+#'     A unidade experimental foi uma cartela com ovos do hospedeiro
+#'     previamente tratados, por uma hora, com um inseticida. Uma fêmea,
+#'     de uma das espécies de parasitóide, foi liberada dentro de um
+#'     tubo de ensaio unto com a cartela contendo ovos do hopedeiro para
+#'     parasitá-los. Depois de 24 horas foi verificado se a fêmea estava
+#'     viva. Ela foi então removida do recipiente. Os ovos da cartela
+#'     foram observados diariamente até que acontecesse a emergência dos
+#'     parasitóides. Ao término do experimento, quando todos os insetos
+#'     nascidos morreram, o número de ovos parasitados, total de
+#'     parasitóides mortos e nascidos de cada sexo e número de dias de
+#'     incubação dos parasitóides foram algumas das variáveis
+#'     registradas.
 #'
-#' A unidade experimental foi uma cartela com ovos do hospedeiro
-#'     previamente tratados com um inseticida. Uma fêmea de uma das
-#'     espécies de parasitóide era colocada com cartela para parasitá-lo
-#'     dentro de um recipiente. Depois de 24 horas era verificado se a
-#'     fêmea estava viva. Ela era então removida do recipiente. Os ovos
-#'     da cartela foram observados diáriamente até que acontecesse a
-#'     emergência dos parasitóides. O número de ovos parasitados, total
-#'     de parasitóides mortos e nascidos de cada sexo e número de dias
-#'     de incubação dos parasitóides foram algumas das variáveis
-#'     registradas no experimento.
-#'
-#' Quando as fêmeas morrem antes de fazer o parasitismo, não existem
+#'     Quando as fêmeas morrem antes de fazer o parasitismo, não existem
 #'     registros para ovos parasitados e para as demais variáveis
-#'     dependentes do evento parasitar os ovos.
+#'     dependentes do evento "parasitar os ovos".
 #'
 #' @format Um \code{data.frame} com 560 observações e 12 variáveis, em
 #'      que
@@ -31,55 +33,63 @@
 #' \describe{
 #'
 #' \item{\code{inset}}{Fator que representa o inseticica aplicado aos
-#'     ovos do hospedeiro.}
+#'     ovos do hospedeiro. A testemunha foi a aplicação de água.}
 #'
-#' \item{\code{paras}}{Fator que representa a espécie do parasitóride:
+#' \item{\code{paras}}{Fator que representa a espécie do parasitóide:
 #'     \emph{Trichogramma atopovirilia} e \emph{Trichogramma
 #'     pretiosum}.}
 #'
 #' \item{\code{hosp}}{Fator que representa o hospedeiro cujos ovos são
-#'     parasitados: \emph{Anticarsia gemmatalis} (lagarta-da-soja) e
+#'     colocados em uma cartela e oferecidos para serem parasitados:
+#'     \emph{Anticarsia gemmatalis} (lagarta-da-soja) e
 #'     \emph{Chrysodeixis includens} (lagarta-falsa-medideira).}
 #'
 #' \item{\code{rept}}{Número que indentifica as repetições de cada cela
 #'     experimental. A unidade experimental é uma cartela com ovos do
-#'     hospedeiro (\code{hosp}) tratado com um inseticida (\code{inset})
-#'     e exposta a um parasitóide (\code{paras}).}
-#'
-#' \item{\code{otot}}{Número total de ovos para serem parasitados na
-#'     cartela (unidade experimental).}
-#'
-#' \item{\code{opar}}{Número de ovos parasitados da cartela pela fêmea
-#'     do parasitóide.}
-#'
-#' \item{\code{oeme}}{Número de ovos com orifício de emergência de
-#'     parasitóide, o que indica que o ovo foi parasitado e emergiram
-#'     parasitóides dele (pelo menos um).}
-#'
-#' \item{\code{pne}}{Parasitóides não emergidos por cartela. É o total
-#'     de parasitóides encontrados nos ovos da cartela que não
-#'     emergiram.}
-#'
-#' \item{\code{incub}}{Tempo para incubação dos parasitóides. É o
-#'     intervalo de tempo (em dias) entre o dia da liberação da fêmea
-#'     nos ovos (início do parasitismo) e a emergência dos
-#'     parasitóides. Os parasitóides de uma mesma cartela emergiram
-#'     todos no mesmo dia.}
-#'
-#' \item{\code{macho}}{Número de parasitóides machos na cartela
-#'     emergidos com vida. A diferença entre os sexos é morfológica,
-#'     marcada pelo tipo de antena dos parasitóides.}
-#'
-#' \item{\code{femea}}{Número de parasitóides fêmeas na cartela
-#'     emergidos com vida. A soma dois sexos resulta no total de
-#'     parasitóides vivos, enquanto que \code{pne} é o total de mortos.}
+#'     hospedeiro (\code{hosp}) tratado previamente com um inseticida
+#'     (\code{inset}) e exposta a um parasitóide (\code{paras}).}
 #'
 #' \item{\code{mort}}{Variável binária que indica a sobrevivência (1) ou
 #'     não (2) da fêmea 24 horas após ser liberada na cartela.}
 #'
+#' \item{\code{otot}}{Número total de ovos para serem parasitados na
+#'     cartela (unidade experimental) colocada dentro do tubo de
+#'     ensaio.}
+#' \item{\code{incub}}{Tempo para incubação dos parasitóides. É o
+#'     intervalo de tempo (em dias) entre o dia da liberação da fêmea
+#'     junto a cartela com ovos (início do parasitismo) e a emergência
+#'     dos parasitóides dos ovos. Os parasitóides de uma mesma cartela
+#'     emergiram todos no mesmo dia.}
+#'
+#' \item{\code{opar}}{Número de ovos parasitados da cartela pela fêmea
+#'     do parasitóide 24h após a sua liberação.}
+#'
+#' \item{\code{oeme}}{Número de ovos com orifício de emergência de
+#'     parasitóide, o que indica que o ovo foi parasitado e emergiram
+#'     parasitóides dele (pelo menos um parasitóide).}
+#'
+#' \item{\code{pne}}{Parasitóides não emergidos por cartela. É o total
+#'     de parasitóides encontrados nos ovos da cartela que não
+#'     emergiram, por não sobreviver ao inseticida ou não ter vigor para
+#'     sair.}
+#'
+#' \item{\code{macho}}{Número de parasitóides machos na cartela
+#'     emergidos com vida. A diferença entre os sexos é morfológica,
+#'     marcada pelo tipo de antena dos parasitóides. Depois de mortos,
+#'     os parasitóides emergidos do tubo de ensaio foram avaliados com
+#'     lupa para determinação dos sexos pela forma da antena.}
+#'
+#' \item{\code{femea}}{Número de parasitóides fêmeas na cartela
+#'     emergidos com vida. A soma dois sexos resulta no total de
+#'     parasitóides vivos, enquanto que \code{pne} é o total de
+#'     mortos. Com essas variáveis é possível determinar a proporção de
+#'     emergência.}
+#'
 #' }
-#' @source Tamara Akemi Takahashi (\email{tamaratakahashi@@gmail.com}).
-#'     IMPROVE
+#' @source Tamara Akemi Takahashi (\email{tamaratakahashi@@gmail.com}),
+#'     estudante de Mestrado do Programa de Pós Graduação em Produção
+#'     Vegetal da UFPR (\url{http://www.pgapv.agrarias.ufpr.br/}). Luís
+#'     Amilton Foerster (\email{lfoerster888@@gmail.com}, orientador).
 #' @examples
 #'
 #' data(egg_parasitoid)
