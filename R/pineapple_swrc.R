@@ -1,6 +1,6 @@
 #' @name pineapple_swrc
-#' @title Atributos físico-hídricos do solo sob práticas de manejo para
-#'     cultivo de abacaxizeiro
+#' @title Atributos f\enc{í}{i}sico-h\enc{í}{i}dricos do solo sob
+#'     pr\enc{á}{a}ticas de manejo para cultivo de abacaxizeiro
 #' @description Resultados de um experimento fatorial \eqn{2\times
 #'     2\times 4\times 2} que estudou o efeito da cobertura do solo e
 #'     gessagem no cultivo de quatro variedades de abacaxi com amostras

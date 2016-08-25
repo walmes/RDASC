@@ -1,6 +1,6 @@
 #' @name caiuae_germ
-#' @title Temperatura e Umidade na Germinação de Caiué \emph{Elaeis
-#'     oleifera}
+#' @title Temperatura e Umidade na Germina\enc{çã}{ca}o de
+#'     Caiu\enc{é}{e} \emph{Elaeis oleifera}
 #' @description Conjunto de dados com os resultados de um experimento
 #'     feito com sementes de caiaué (\emph{Elaeis oleifera}) onde se
 #'     estudou a combinação de temperatua e umidade na germinação e

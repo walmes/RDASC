@@ -2,8 +2,8 @@
 % Please edit documentation in R/sugarcane_straw.R
 \name{sugarcane_straw}
 \alias{sugarcane_straw}
-\title{Efeito de Adubação NK em Cana-de-açucar no Cultivo Com e Sem
-    Cobertura com Palha}
+\title{Efeito de Aduba\enc{çã}{ca}o NK em Cana-de-a\enc{ç}{c}ucar no
+    Cultivo Com e Sem Cobertura com Palha}
 \format{Um \code{data.frame} com 250 observações e 11 variáveis, em
     que
 

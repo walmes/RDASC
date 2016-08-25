@@ -2,8 +2,8 @@
 % Please edit documentation in R/caiuae_germ.R
 \name{caiuae_germ}
 \alias{caiuae_germ}
-\title{Temperatura e Umidade na Germinação de Caiué \emph{Elaeis
-    oleifera}}
+\title{Temperatura e Umidade na Germina\enc{çã}{ca}o de
+    Caiu\enc{é}{e} \emph{Elaeis oleifera}}
 \format{Um \code{data.frame} com 45 observações e 8 variáveis, em
      que
 

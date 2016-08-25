@@ -1,6 +1,6 @@
 #' @name sugarcane_straw
-#' @title Efeito de Adubação NK em Cana-de-açucar no Cultivo Com e Sem
-#'     Cobertura com Palha
+#' @title Efeito de Aduba\enc{çã}{ca}o NK em Cana-de-a\enc{ç}{c}ucar no
+#'     Cultivo Com e Sem Cobertura com Palha
 #' @description O objetivo desse trabalho foi avaliar o efeito de doses
 #'     de nitrogênio (N) e potássio (K), aplicadas em cobertura sob os
 #'     teores foliares de N (TFN) e K (TFK) e nos caracteres de produção

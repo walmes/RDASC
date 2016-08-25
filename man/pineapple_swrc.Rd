@@ -2,8 +2,8 @@
 % Please edit documentation in R/pineapple_swrc.R
 \name{pineapple_swrc}
 \alias{pineapple_swrc}
-\title{Atributos físico-hídricos do solo sob práticas de manejo para
-    cultivo de abacaxizeiro}
+\title{Atributos f\enc{í}{i}sico-h\enc{í}{i}dricos do solo sob
+    pr\enc{á}{a}ticas de manejo para cultivo de abacaxizeiro}
 \format{Um \code{data.frame} com 1664 observações e 7 variáveis, em
     que
 
