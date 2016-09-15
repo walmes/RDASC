@@ -1,0 +1,572 @@
+---
+title: >
+  Efeito de Inseticidas no Parasitismo de *Trichogramma* em Ovos de Lagartas da Soja
+author: >
+  [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes) &
+  [Tamara Akemi Takahashi](http://lattes.cnpq.br/0906035116528938)
+date: "`r Sys.Date()`"
+vignette: >
+  %\VignetteIndexEntry{Efeito de Inseticidas no Parasitismo de Trichogramma em Ovos de Lagartas da Soja}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Definições da Sessão
+
+```{r, message=FALSE, results="hide"}
+# https://github.com/walmes/wzRfun
+# devtools::install_github("walmes/wzRfun")
+library(wzRfun)
+library(lattice)
+library(latticeExtra)
+library(plyr)
+```
+```{r, eval=FALSE}
+library(wzCoop)
+```
+```{r setup, include=FALSE}
+source("_setup.R")
+```
+
+****
+## Análise Exploratória
+
+```{r}
+# Estrutura dos dados.
+str(egg_parasitoid)
+
+# Níveis dos fatores experimentais.
+summary(egg_parasitoid[, 1:3])
+
+# Usando nomes curtos para os níveis.
+egg <- egg_parasitoid
+egg <- within(egg, {
+    inset <- factor(inset,
+                    labels = substr(levels(egg_parasitoid$inset),
+                                    start = 1, stop = 4))
+    paras <- factor(paras, labels = c("Atopo", "Preti"))
+    hosp <- factor(hosp, labels = c("Anti", "Chry"))
+})
+
+# Tabela de frequencia planejada do experimento (7 x 2 x 2 com 20 rep.).
+ftable(xtabs(~inset + paras + hosp, data = egg))
+
+# Tabela de frequência só para casos completos.
+ftable(xtabs(~inset + paras + hosp, data = na.omit(egg)))
+```
+
+****
+## Sobreviência da Fêmea
+
+A sobreviência da fêmea, 24 horas após a liberação no tubo de ensaio
+para parasitar os ovos, é representada por uma variável (`mort`)
+dicotômica onde 0 indica que a fêmea sobreviveu e 1 que não não
+sobreviveu.
+
+```{r}
+# Desfechos: 0 = sobreviveu, 1 = não sobreviveu.
+ftable(xtabs(mort ~ inset + paras + hosp, data = egg))
+
+# Como Clorpirifós e Testemunha são controles (-) e (+), onde a
+# expectativa era nenhuma e total sobreviência, serão removidos da
+# análise.
+
+m0 <- glm(mort ~ (inset + paras + hosp)^3,
+          # data = subset(egg, !inset %in% c("Test", "Clor", "Espi")),
+          data = subset(egg),
+          family = quasibinomial)
+anova(m0, test = "F")
+# drop1(m0, test = "F")
+
+m1 <- update(m0, mort ~ inset * (paras + hosp))
+anova(m1, test = "F")
+anova(m1, m0, test = "F")
+# drop1(m1, test = "F")
+# summary(m1)
+
+# m2 <- update(m0, mort ~ inset * hosp + paras)
+# anova(m2, test = "F")
+# anova(m2, m0, test = "F")
+# # drop1(m2, test = "F")
+# summary(m2)
+
+# #-----------------------------------------------------------------------
+# # Remover celas com 0 ou 20 que não estimativa de verossimilhança para a
+# # probabilidade de sobreviência.
+#
+# egg2 <- ddply(egg, .(inset, paras, hosp),
+#               function(x) {
+#                   if(var(x$mort) > 0) {
+#                       return(x)
+#                   } else {
+#                       return(NULL)
+#                   }
+#               })
+# str(egg2)
+#
+# # Celas ausentes estão com "." no lugar (quase metade).
+# tb <- ftable(xtabs(mort ~ inset + paras + hosp, data = egg2))
+# print.table(tb, zero.print = ".")
+# # tb
+#
+# m0 <- glm(mort ~ (inset + paras + hosp)^2,
+#           data = egg2,
+#           family = quasibinomial)
+# anova(m0, test = "F")
+#
+# m1 <- update(m0, mort ~ inset + paras + hosp)
+# anova(m1, test = "F")
+# drop1(m1, test = "F")
+# summary(m1)
+#
+# m2 <- update(m0, mort ~ inset)
+# anova(m2, m0, test = "F")
+# anova(m2, test = "F")
+#
+# summary(m2)
+
+#-----------------------------------------------------------------------
+# Predição.
+
+pred <- with(m0$xlevels,
+             expand.grid(inset = inset,
+                         paras = paras,
+                         hosp = hosp,
+                         KEEP.OUT.ATTRS = FALSE))
+str(pred)
+
+fit <- predict(m1, newdata = pred, se.fit = TRUE)
+prob <- with(fit, {
+    me <- outer(c(lwr = -1, fit = 0, upr = 1) * qnorm(0.975),
+                se.fit, FUN = "*")
+    eta <- sweep(x = t(me), MARGIN = 1, STATS = fit, FUN = "+")
+    binomial()$linkinv(eta)
+})
+
+pred <- cbind(pred, as.data.frame(prob))
+pred <- pred[with(pred, order(paras, inset, hosp)), ]
+
+segplot(inset ~ lwr + upr | paras,
+        centers = fit,
+        data = pred,
+        xlab = "Insticides",
+        ylab = "Probability of surviving",
+        draw = FALSE,
+        horizontal = FALSE,
+        groups = hosp,
+        gap = 0.1,
+        panel = panel.groups.segplot,
+        pch = c(1, 19)[as.integer(pred$hosp)])
+```
+
+****
+## Ovos Parasitados
+
+```{r}
+ftable(xtabs(complete.cases(egg) ~ inset + hosp + paras, data = egg))
+
+# Remover Clor e Espi pois tem informação inferior a metade com relação
+# aos demais.
+egg2 <- droplevels(subset(egg, !inset %in% c("Clor", "Espi")))
+str(egg2)
+```
+
+```{r}
+#-----------------------------------------------------------------------
+# Análise exploratória.
+
+ftable(xtabs(!is.na(opar) ~ inset + paras + hosp, data = egg2))
+ftable(xtabs(opar/otot ~ inset + paras + hosp, data = egg2))
+
+useOuterStrips(xyplot(opar/otot ~ inset | hosp + paras,
+                      data = egg2,
+                      jitter.x = TRUE,
+                      type = c("p", "a")))
+
+#-----------------------------------------------------------------------
+# Ajuste do modelo.
+
+m0 <- glm(cbind(opar, otot - opar) ~ inset * paras * hosp,
+          data = egg2,
+          family = quasibinomial)
+
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+anova(m0, test = "F")
+# summary(m0)
+
+#-----------------------------------------------------------------------
+# Predição.
+
+pred <- with(m0$xlevels,
+             expand.grid(inset = inset,
+                         paras = paras,
+                         hosp = hosp,
+                         KEEP.OUT.ATTRS = FALSE))
+str(pred)
+
+fit <- predict(m0, newdata = pred, se.fit = TRUE)
+prob <- with(fit, {
+    me <- outer(c(lwr = -1, fit = 0, upr = 1) * qnorm(0.975),
+                se.fit, FUN = "*")
+    eta <- sweep(x = t(me), MARGIN = 1, STATS = fit, FUN = "+")
+    binomial()$linkinv(eta)
+})
+
+pred <- cbind(pred, as.data.frame(prob))
+pred <- pred[with(pred, order(paras, inset, hosp)), ]
+
+segplot(inset ~ lwr + upr | paras,
+        centers = fit,
+        data = pred,
+        draw = FALSE,
+        horizontal = FALSE,
+        groups = hosp,
+        gap = 0.1,
+        panel = panel.groups.segplot,
+        pch = c(1, 19)[as.integer(pred$hosp)])
+```
+
+****
+## Ovos Emergidos
+
+```{r}
+#-----------------------------------------------------------------------
+# Análise exploratória.
+
+ftable(xtabs(!is.na(oeme) ~ inset + paras + hosp, data = egg2))
+ftable(xtabs(oeme/otot ~ inset + paras + hosp, data = egg2))
+
+useOuterStrips(xyplot(oeme/otot ~ inset | hosp + paras,
+                      data = egg2[!is.na(egg2$oeme), ],
+                      jitter.x = TRUE,
+                      type = c("p", "a")))
+
+#-----------------------------------------------------------------------
+# Ajuste do modelo.
+
+m0 <- glm(cbind(oeme, otot - oeme) ~ inset * paras * hosp,
+          data = egg2,
+          family = quasibinomial)
+
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+anova(m0, test = "F")
+# summary(m0)
+
+#-----------------------------------------------------------------------
+# Predição.
+
+pred <- with(m0$xlevels,
+             expand.grid(inset = inset,
+                         paras = paras,
+                         hosp = hosp,
+                         KEEP.OUT.ATTRS = FALSE))
+str(pred)
+
+fit <- predict(m0, newdata = pred, se.fit = TRUE)
+prob <- with(fit, {
+    me <- outer(c(lwr = -1, fit = 0, upr = 1) * qnorm(0.975),
+                se.fit, FUN = "*")
+    eta <- sweep(x = t(me), MARGIN = 1, STATS = fit, FUN = "+")
+    binomial()$linkinv(eta)
+})
+
+pred <- cbind(pred, as.data.frame(prob))
+pred <- pred[with(pred, order(paras, inset, hosp)), ]
+
+segplot(inset ~ lwr + upr | paras,
+        centers = fit,
+        data = pred,
+        draw = FALSE,
+        horizontal = FALSE,
+        groups = hosp,
+        gap = 0.1,
+        panel = panel.groups.segplot,
+        pch = c(1, 19)[as.integer(pred$hosp)])
+```
+
+****
+## Tempo de Incubação dos Parasitóides
+
+Essa variável apresenta pouca variação para algumas celas.
+
+****
+## Razão Sexual
+
+```{r}
+#-----------------------------------------------------------------------
+# Análise exploratória.
+
+useOuterStrips(xyplot(femea + macho ~ inset | hosp + paras,
+                      data = egg2[!is.na(egg2$oeme), ],
+                      jitter.x = TRUE,
+                      auto.key = TRUE,
+                      type = c("p", "a")))
+
+#-----------------------------------------------------------------------
+# Ajuste do modelo.
+
+m0 <- glm(cbind(femea, macho) ~ inset * paras * hosp,
+          data = egg2,
+          family = quasibinomial)
+
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+anova(m0, test = "F")
+# summary(m0)
+
+m1 <- glm(cbind(femea, macho) ~ paras * hosp,
+          data = egg2,
+          family = quasibinomial)
+
+par(mfrow = c(2, 2))
+plot(m1)
+layout(1)
+
+anova(m0, m1, test = "F")
+anova(m1, test = "F")
+# summary(m1)
+
+#-----------------------------------------------------------------------
+# Predição.
+
+pred <- with(m1$xlevels,
+             expand.grid(paras = paras,
+                         hosp = hosp,
+                         KEEP.OUT.ATTRS = FALSE))
+str(pred)
+
+fit <- predict(m1, newdata = pred, se.fit = TRUE)
+prob <- with(fit, {
+    me <- outer(c(lwr = -1, fit = 0, upr = 1) * qnorm(0.975),
+                se.fit, FUN = "*")
+    eta <- sweep(x = t(me), MARGIN = 1, STATS = fit, FUN = "+")
+    binomial()$linkinv(eta)
+})
+
+pred <- cbind(pred, as.data.frame(prob))
+pred <- pred[with(pred, order(paras, hosp)), ]
+
+segplot(paras ~ lwr + upr,
+        centers = fit,
+        data = pred,
+        draw = FALSE,
+        horizontal = FALSE,
+        groups = hosp,
+        gap = 0.05,
+        panel = panel.groups.segplot,
+        pch = c(1, 19)[as.integer(pred$hosp)])
+```
+
+****
+## Razão de Emergência dos Parasitóides
+
+```{r}
+#-----------------------------------------------------------------------
+# Análise exploratória.
+
+egg2$pem <- with(egg2, femea + macho)
+
+useOuterStrips(xyplot(pem + pne ~ inset | hosp + paras,
+                      data = egg2[!is.na(egg2$oeme), ],
+                      jitter.x = TRUE,
+                      auto.key = TRUE,
+                      type = c("p", "a")))
+
+#-----------------------------------------------------------------------
+# Ajuste do modelo.
+
+m0 <- glm(cbind(pem, pne) ~ inset * paras * hosp,
+          data = egg2,
+          family = quasibinomial)
+
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+anova(m0, test = "F")
+# summary(m0)
+
+#-----------------------------------------------------------------------
+# Predição.
+
+pred <- with(m0$xlevels,
+             expand.grid(inset = inset,
+                         paras = paras,
+                         hosp = hosp,
+                         KEEP.OUT.ATTRS = FALSE))
+str(pred)
+
+fit <- predict(m0, newdata = pred, se.fit = TRUE)
+prob <- with(fit, {
+    me <- outer(c(lwr = -1, fit = 0, upr = 1) * qnorm(0.975),
+                se.fit, FUN = "*")
+    eta <- sweep(x = t(me), MARGIN = 1, STATS = fit, FUN = "+")
+    binomial()$linkinv(eta)
+})
+
+pred <- cbind(pred, as.data.frame(prob))
+pred <- pred[with(pred, order(paras, inset, hosp)), ]
+
+segplot(inset ~ lwr + upr | paras,
+        centers = fit,
+        data = pred,
+        draw = FALSE,
+        horizontal = FALSE,
+        groups = hosp,
+        gap = 0.1,
+        panel = panel.groups.segplot,
+        pch = c(1, 19)[as.integer(pred$hosp)])
+```
+
+****
+## Total de Parasitóides
+
+```{r}
+#-----------------------------------------------------------------------
+# Análise exploratória.
+
+egg2$ptot <- with(egg2, femea + macho + pne)
+
+useOuterStrips(xyplot(ptot ~ inset | hosp + paras,
+                      data = egg2[!is.na(egg2$ptot), ],
+                      jitter.x = TRUE,
+                      auto.key = TRUE,
+                      type = c("p", "a")))
+
+#-----------------------------------------------------------------------
+# Ajuste do modelo.
+
+m0 <- glm(ptot ~ inset * paras * hosp,
+          data = egg2,
+          family = quasipoisson)
+
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+anova(m0, test = "F")
+# summary(m0)
+
+#-----------------------------------------------------------------------
+# Predição.
+
+pred <- with(m0$xlevels,
+             expand.grid(inset = inset,
+                         paras = paras,
+                         hosp = hosp,
+                         KEEP.OUT.ATTRS = FALSE))
+str(pred)
+
+fit <- predict(m0, newdata = pred, se.fit = TRUE)
+prob <- with(fit, {
+    me <- outer(c(lwr = -1, fit = 0, upr = 1) * qnorm(0.975),
+                se.fit, FUN = "*")
+    eta <- sweep(x = t(me), MARGIN = 1, STATS = fit, FUN = "+")
+    poisson()$linkinv(eta)
+})
+
+pred <- cbind(pred, as.data.frame(prob))
+pred <- pred[with(pred, order(paras, inset, hosp)), ]
+
+segplot(inset ~ lwr + upr | paras,
+        centers = fit,
+        data = pred,
+        draw = FALSE,
+        horizontal = FALSE,
+        groups = hosp,
+        gap = 0.1,
+        panel = panel.groups.segplot,
+        pch = c(1, 19)[as.integer(pred$hosp)])
+```
+
+
+****
+## Session information
+
+```{r, echo=FALSE, results="hold"}
+cat(format(Sys.time(), format = "%A, %d de %B de %Y, %H:%M"),
+    "----------------------------------------", sep = "\n")
+sessionInfo()
+```
+
+```{r, eval=FALSE, include=FALSE}
+# Log-verossimilhança para binomial.
+ll <- function(p, y, size) {
+    sum(dbinom(x = y, size = size, prob = p, log = TRUE))
+}
+
+# Dados observados (amostra pequena).
+y <- 20
+size <- 20
+
+# Grid de valores de p e sua ll correspondente.
+p <- seq(0.01, 0.99, by = 0.01)
+l <- sapply(p, FUN = ll, y = y, size = size)
+
+# Gráfico e IC baseado em corte da LL.
+plot(l ~ p, type = "l")
+abline(h = max(l) - 2 * qchisq(0.95, 1), v = 0.67, col = 2)
+
+# Agora com uma amostra bem ainda maior.
+y <- 200
+size <- 200
+
+# Grid de valores de p e sua ll correspondente.
+p <- seq(0.01, 0.99, by = 0.01)
+l <- sapply(p, FUN = ll, y = y, size = size)
+
+# Gráfico e IC baseado em corte da LL.
+plot(l ~ p, type = "l")
+abline(h = max(l) - 2 * qchisq(0.95, 1), v = 0.95, col = 2)
+
+#-----------------------------------------------------------------------
+```
+
+```{r, eval = FALSE, include = FALSE}
+library(arm)
+
+# Cauchy(0, 1) prior.
+m0 <- bayesglm(mort ~ (inset + paras + hosp)^2,
+               data = subset(egg, !inset %in% c("Test", "Clor")),
+               family = quasibinomial)
+summary(m0)
+anova(m0, test = "Chisq")
+
+# display(m0)
+# show(m0)
+# class(m0)
+
+
+# m0$data
+# names(m0$xlevels)
+# str(m0)
+# formula(m0)
+
+X <- unique(model.matrix(m0))
+V <- vcov(m0)
+b <- coef(m0)
+
+str(b)
+str(X)
+
+X %*% b
+sqrt(diag(X %*% V %*% t(X)))
+
+predict(m0)
+methods(class = class(m0))
+
+help(predict.bayesglm)
+
+predict(m0, newdata = pred)
+predict(m0)
+
+#-----------------------------------------------------------------------
+```
