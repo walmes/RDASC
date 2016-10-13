@@ -5,8 +5,8 @@ author: >
   [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes) &
   [Wanderlei Antônio Alves Lima](http://lattes.cnpq.br/8165833589421209 "email: wanderlei.lima@embrapa.br")
 date: "`r Sys.Date()`"
-bibliography: _bibliography.bib
-csl: _abnt_ufpr_2011-mendeley.csl
+bibliography: config/bibliography.bib
+csl: config/abnt_ufpr_2011-mendeley.csl
 vignette: >
   %\VignetteIndexEntry{Germination and Vigor of caiaué seeds: American oil palm tree}
   %\VignetteEngine{knitr::rmarkdown}
@@ -31,7 +31,7 @@ sapply(pks, library, character.only = TRUE, logical.return = TRUE)
 library(wzCoop)
 ```
 ```{r setup, include=FALSE}
-source("_setup.R")
+source("config/setup.R")
 ```
 
 ## Exploratory data analysis

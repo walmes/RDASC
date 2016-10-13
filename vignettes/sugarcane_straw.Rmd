@@ -31,7 +31,7 @@ sapply(pks, library, character.only = TRUE, logical.return = TRUE)
 library(wzCoop)
 ```
 ```{r setup, include=FALSE}
-source("_setup.R")
+source("config/setup.R")
 ```
 
 ## Exploratory data analysis
