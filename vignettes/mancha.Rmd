@@ -1,0 +1,326 @@
+---
+title: >
+  Evolução da Severidade de Mancha Foliar de *Glomerela* em Macieira
+author: >
+  [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes),
+  [Rafaele Regina Moreira](http://lattes.cnpq.br/8144030677308566) &
+  [Louise Larissa May De Mio](http://lattes.cnpq.br/5306520242222948)
+date: "`r Sys.Date()`"
+vignette: >
+  %\VignetteIndexEntry{Evolução da Severidade de Mancha Foliar de Glomerela em Macieira}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Definições da Sessão
+
+```{r, message=FALSE, results="hide"}
+# https://github.com/walmes/wzRfun
+# devtools::install_github("walmes/wzRfun")
+library(wzRfun)
+library(lattice)
+library(latticeExtra)
+library(plyr)
+library(rootSolve)  # gradient().
+library(wzRfun)     # panel.cbH().
+library(nls2)       # as.proto.list(), necessária para as.lm().
+source("http://leg.ufpr.br/~walmes/cursoR/ciaeear/as.lm.R")
+```
+```{r, eval=FALSE}
+library(wzCoop)
+```
+```{r setup, include=FALSE}
+source("config/setup.R")
+```
+
+****
+## Análise Exploratória
+
+O experimento consistiu da observação da severidade da mancha foliar de
+*Glomrella* em ramos marcados de macieiras em dois pomares por 11
+semanas. Em cada pomar, 30 plantas ao acaso tiveram um ramo marcado com
+10 folhas. Aproximadamente a cada 7 dias, os ramos eram observados para
+a determinação da severidade de *Glomerella* em cada uma das folhas. Um
+total de 11 avaliações dos ramos foi feito produzindo 2 pomares $\times$
+30 ramos $\times$ 10 folhas $\times$ 11 avaliações $=$ 6600 observações
+de severidade.
+
+As avaliações foram feitas nas mesmas datas em dois pomares
+indepedentes. Cada folha foi observada repetidamente nas 11 avaliações,
+exceto quando a folha caia do ramo. Sendo assim, um número de menor de
+folhas por ramo permanecia com o passar do tempo. Essas observações
+perdidas (*missings*) dificilmente foram perdidas ao acaso (*missing at
+random*), haja visto que o progresso da doença sobre as folhas é um
+fator que provoca a queda.
+
+```{r}
+# Estrutura dos dados.
+str(mancha)
+
+# Tabela de frequencia.
+ftable(xtabs(~pomar + dia, data = mancha))
+
+# Tabela de frequência de folhas presas ao ramo (sem folhas perdidas).
+ftable(xtabs(~pomar + dia, data = na.omit(mancha)))
+
+# Acesse a documentação para mais detalhes.
+# help(mancha, help_type = "html")
+
+# Convertendo variáveis para fator.
+mancha <- within(mancha, {
+    pomar <- factor(pomar, labels = c("I", "II"))
+    ramo <- factor(ramo)
+    folha <- interaction(ramo, folha, drop = TRUE)
+})
+
+xyplot(sever ~ dia | ramo,
+       groups = folha,
+       data = subset(mancha, pomar == "I"),
+       type = "o",
+       xlab = "Dia de avaliação",
+       ylab = "Severidade da mancha foliar (%)",
+       main = "Pomar I",
+       as.table = TRUE)
+
+xyplot(sever ~ dia | ramo,
+       groups = folha,
+       data = subset(mancha, pomar == "II"),
+       type = "o",
+       xlab = "Dia de avaliação",
+       ylab = "Severidade da mancha foliar (%)",
+       main = "Pomar II",
+       as.table = TRUE)
+
+```
+
+Pelos diagramas de dipersão, verifica-se que existe tanto variabilidade
+entre folhas de um mesmo ramo quanto entre ramos. O número de
+observações de cada folha também varia com o ramos. No pomar I, o ramo
+13 teve poucas observações ao passo que o ramo 6 teve praticamente
+todas. Isso sugere que a forma como a doença se manifesta nos ramos
+depende de características locais não registradas, como a nutrição da
+planta, as condições de solo, a exposição do ramo ao sol, etc.
+
+****
+## Ajuste de Modelo de Regressão Não Linear
+
+```{r}
+da <- subset(mancha, pomar == "I")
+
+# Calibrando o chute inicial.
+start <- list(A = 80, xc = 80, sc = 20)
+xyplot(sever ~ dia, data = da) +
+    layer(panel.curve(A/(1 + exp(-(x - xc)/sc)), col = 2),
+          data = start)
+
+n0 <- nls(sever ~ A/(1 + exp(-(dia - xc)/sc)),
+          data = da,
+          start = start)
+
+summary(n0)
+
+# Diagnóstico
+m0 <- as.lm(n0)
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+# Estimativas.
+summary(n0)
+
+# Resultado do ajuste.
+xyplot(sever ~ dia, data = da) +
+    layer(panel.curve(A/(1 + exp(-(x - xc)/sc)), col = 2),
+          data = as.list(coef(n0)))
+```
+
+****
+## Ajuste de Modelo de Regressão Não Linear com Efeitos Aleatórios
+
+```{r}
+
+library(nlme)
+
+da <- da[complete.cases(da), ]
+da <- groupedData(sever ~ dia | ramo/folha,
+                  data = da,
+                  order.groups = FALSE)
+
+n1 <- nlme(sever ~ A/(1 + exp(-(dia - xc)/sc)),
+           fixed = A + xc + sc ~ 1,
+           random = xc + sc ~ 1 | ramo/folha,
+           data = da,
+           start = coef(n0))
+logLik(n1)
+
+# n2 <- nlme(sever ~ A/(1 + exp(-(dia - xc)/sc)),
+#            fixed = A + xc + sc ~ 1,
+#            random = A + sc ~ 1 | folha,
+#            data = da,
+#            start = coef(n0),
+#            control = list(maxIter = 100))
+# logLik(n2)
+
+# xc + sc ~ 1 | ramo/folha 'log Lik.' -4465.499 (df=10)
+# xc + sc ~ 1 | folha      'log Lik.' -4516.702 (df=7)
+# xc      ~ 1 | folha      'log Lik.' -4909.711 (df=5)
+#  A      ~ 1 | folha      'log Lik.' -4968.641 (df=5)
+# sc      ~ 1 | folha NA
+#  A + xc ~ 1 | folha NA
+#  A + sc ~ 1 | folha NA
+
+# Estimativas.
+summary(n1)
+
+# Resultado do ajuste.
+plot(augPred(n1, level = 0), as.table = TRUE)
+
+# Diagnóstico.
+# r <- residuals(n1)
+# f <- fitted(n1)
+# xyplot(r ~ f)
+# qqmath(r)
+```
+
+****
+## Combinando os Resultados
+
+```{r}
+# Estimates and standard error.
+summary(n0)$coeff
+summary(n1)$tTable
+
+# Confidence intervals.
+ci0 <- cbind(confint.default(n0), coef(n0))
+ci1 <- intervals(n1)$fixed
+
+ci1 <- ci1[, c(2, 1, 3)]
+ci0 <- ci0[, c(3, 1, 2)]
+colnames(ci0) <- colnames(ci1) <- c("est", "lwr", "upr")
+
+ci <- as.data.frame(rbind(ci0, ci1))
+ci$par <- factor(rownames(ci), levels = c("A", "xc", "sc"))
+rownames(ci) <- NULL
+ci$model <- gl(2, 3, labels = c("nls", "nlme"))
+ci
+
+segplot(model ~ lwr + upr | par,
+        data = ci,
+        centers = est,
+        draw = FALSE,
+        scales = list(x = "free"),
+        layout = c(NA, 1),
+        ylab = "Modelo",
+        xlab = "Estimativa com IC de 95%")
+
+#-----------------------------------------------------------------------
+# Random effects.
+
+# a <- ranef(n1)
+# str(a)
+#
+# qqmath(a$ramo$xc)
+# qqmath(a$ramo$sc)
+# splom(a$ramo)
+#
+# qqmath(a$folha$xc)
+# qqmath(a$folha$sc)
+# splom(a$folha)
+
+#-----------------------------------------------------------------------
+# Predição.
+
+# Domínio para a predição.
+pred <- expand.grid(dia = 0:85)
+
+# Valores preditos.
+pred$y0 <- predict(n0, newdata = pred)
+pred$y1 <- predict(n1, newdata = pred, level = 0)
+
+# Modelo escrito como função dos parâmetros (theta).
+f <- function(theta, xx) {
+    with(as.list(theta),
+         A/(1 + exp(-(xx - xc)/sc)))
+}
+
+# Matriz com as derivadas parciais de theta no mle de theta.
+F0 <- gradient(f, x = coef(n0), xx = pred$dia)
+F1 <- gradient(f, x = fixef(n1), xx = pred$dia)
+
+# Fatoração da matriz de covariância de theta.
+U0 <- chol(vcov(n0))
+U1 <- chol(vcov(n1))
+
+pred$se0 <- sqrt(apply(F0 %*% t(U0), 1, function(x) sum(x^2)))
+pred$se1 <- sqrt(apply(F1 %*% t(U1), 1, function(x) sum(x^2)))
+
+zval <- qnorm(p = c(lwr = 0.025, fit = 0.5, upr = 0.975))
+me <- outer(pred$se0, zval, "*")
+b <- sweep(me, 1, pred$y0, "+")
+colnames(b) <- paste(colnames(b), "0", sep = "")
+pred <- cbind(pred, b)
+
+me <- outer(pred$se1, zval, "*")
+b <- sweep(me, 1, pred$y1, "+")
+colnames(b) <- paste(colnames(b), "1", sep = "")
+pred <- cbind(pred, b)
+
+#-----------------------------------------------------------------------
+# Predição para o nível de folha.
+
+predue <- unique(subset(da, select = c(ramo, folha)))
+dia <- seq(0, 85, by = 2)
+predue <- predue[rep(1:nrow(predue), each = length(dia)), ]
+predue$dia <- dia
+str(predue)
+
+a <- predict(n1, newdata = predue, level = 2)
+predue$y <- unlist(a)
+
+#-----------------------------------------------------------------------
+
+xyplot(sever ~ dia,
+       data = da,
+       jitter.x = TRUE,
+       pch = 19,
+       ylab = "Severidade da mancha foliar (%)",
+       xlab = "Dia da avaliação") +
+    as.layer(xyplot(y ~ dia,
+                    data = predue,
+                    col = "gray50",
+                    type = "l",
+                    groups = folha), under = TRUE) +
+    as.layer(xyplot(y0 ~ dia,
+                    data = pred,
+                    type = "l",
+                    lty = 2,
+                    lwd = 2,
+                    prepanel = prepanel.cbH,
+                    cty = "bands",
+                    ly = pred$lwr0,
+                    uy = pred$upr0,
+                    fill = "red",
+                    alpha = 0.6,
+                    panel = panel.cbH)) +
+    as.layer(xyplot(y1 ~ dia,
+                    data = pred,
+                    type = "l",
+                    lty = 1,
+                    lwd = 2,
+                    prepanel = prepanel.cbH,
+                    cty = "bands",
+                    ly = pred$lwr1,
+                    uy = pred$upr1,
+                    fill = "blue",
+                    alpha = 0.6,
+                    panel = panel.cbH))
+```
+
+****
+## Session information
+
+```{r, echo=FALSE, results="hold"}
+cat(format(Sys.time(), format = "%A, %d de %B de %Y, %H:%M"),
+    "----------------------------------------", sep = "\n")
+sessionInfo()
+```
