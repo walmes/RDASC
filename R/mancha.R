@@ -1,0 +1,62 @@
+#' @name mancha
+#' @title Progresso da Mancha Foliar de \emph{Glomerella} em Macieira no
+#'     Estado do Paraná
+#' @description Avaliação da severidade (\% de área com lesão no limbo
+#'     foliar) da mancha foliar de \emph{Glomerella} em duas áreas de
+#'     pomar comercial.  Para cada área foram escolhidas 30 plantas ao
+#'     acaso e em cada planta foi marcado, no terço médio, um segmento
+#'     de ramo contendo 10 folhas. A avaliação da doença foi semanal e
+#'     realizada com auxílio de escala diagramática. A severidade foi
+#'     medida nas 10 folhas de cada ramo, totalizando 300 folhas por
+#'     área experimental.
+#' @format Um \code{data.frame} com 6600 linhas e 5 colunas, em que
+#'
+#' \describe{
+#'
+#' \item{\code{pomar}}{Variável numérica que indica o pomar.}
+#'
+#' \item{\code{dia}}{Dia de avaliação. Foi do dia 0 ao dia 82, com
+#'     intervalos próximos de 7 dias, mudando de acordo com a ocorrência
+#'     de finais de semana e feriados. Os pomares foram avaliados das
+#'     mesmas datas.}
+#'
+#' \item{\code{ramo}}{Variável que indentifica os 30 ramos contendo 10
+#'     folhas cada um, marcados aleatóriamente em 30 árvores diferentes
+#'     (um ramo por árvore) no mesmo pomar. A indentificação é unica por
+#'     pomar.}
+#'
+#' \item{\code{folha}}{Variável que indentifica as 10 folhas marcadas em
+#'     cada ramo, totalizando 300 folhas avaliadas no total de 30 ramos
+#'     por pomar. A indentificação é única por pomar.}
+#'
+#' \item{\code{sever}}{Severidade medida ao longo do tempo em cada uma
+#'     das folhas, em porcentagem de área com lesão de acordo com a
+#'     escala diagramática adotada. Depois que a folha cai do ramo, não
+#'     há como determinar a severidade, então os valores perdidos para
+#'     as datas porteriores a queda da folha são representados com
+#'     \code{NA}.}
+#'
+#' }
+#'
+#' @source Moreira, R. R. (http://lattes.cnpq.br/8144030677308566), May
+#'     De Mio, L. L. (http://lattes.cnpq.br/5306520242222948).
+#'     Universidade Federal do Paraná, SCA, Laboratório de Epidemiologia
+#'     para Manejo Integrado de Doenças em plantas (LEMID).
+#'
+#' @examples
+#'
+#' data(mancha)
+#' str(mancha)
+#'
+#' ftable(xtabs(~pomar + dia, data = mancha))
+#' ftable(xtabs(~pomar + ramo + dia, data = mancha))
+#'
+#' library(lattice)
+#'
+#' # Gráfico de perfil das folhas para 5 ramos em cada pomar.
+#' xyplot(sever ~ dia | ramo + pomar,
+#'        groups = folha,
+#'        data = subset(mancha, ramo <= 5),
+#'        type = "o")
+#'
+NULL

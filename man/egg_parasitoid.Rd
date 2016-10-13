@@ -26,12 +26,13 @@
     hospedeiro (\code{hosp}) tratado previamente com um inseticida
     (\code{inset}) e exposta a um parasitóide (\code{paras}).}
 
-\item{\code{mort}}{Variável binária que indica a sobrevivência (1) ou
-    não (2) da fêmea 24 horas após ser liberada na cartela.}
-
 \item{\code{otot}}{Número total de ovos para serem parasitados na
     cartela (unidade experimental) colocada dentro do tubo de
     ensaio.}
+
+\item{\code{mort}}{Variável binária que indica a sobrevivência (1) ou
+    não (2) da fêmea 24 horas após ser liberada na cartela.}
+
 \item{\code{incub}}{Tempo para incubação dos parasitóides. É o
     intervalo de tempo (em dias) entre o dia da liberação da fêmea
     junto a cartela com ovos (início do parasitismo) e a emergência
