@@ -1,6 +1,6 @@
 #' @name mancha
-#' @title Progresso da Mancha Foliar de \emph{Glomerella} em Macieira no
-#'     Estado do Paraná
+#' @title Progresso da Mancha Foliar de \emph{Glomerella} em Macieira
+#'     no Estado do Paran\enc{á}{a}
 #' @description Avaliação da severidade (\% de área com lesão no limbo
 #'     foliar) da mancha foliar de \emph{Glomerella} em duas áreas de
 #'     pomar comercial.  Para cada área foram escolhidas 30 plantas ao

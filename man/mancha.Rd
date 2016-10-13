@@ -2,8 +2,8 @@
 % Please edit documentation in R/mancha.R
 \name{mancha}
 \alias{mancha}
-\title{Progresso da Mancha Foliar de \emph{Glomerella} em Macieira no
-    Estado do Paraná}
+\title{Progresso da Mancha Foliar de \emph{Glomerella} em Macieira
+    no Estado do Paran\enc{á}{a}}
 \format{Um \code{data.frame} com 6600 linhas e 5 colunas, em que
 
 \describe{
