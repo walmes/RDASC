@@ -1,4 +1,4 @@
-#' @name mancha
+#' @name leaf_spot
 #' @title Progresso da Mancha Foliar de \emph{Glomerella} em Macieira
 #'     no Estado do Paran\enc{á}{a}
 #' @description Avaliação da severidade (\% de área com lesão no limbo
@@ -17,17 +17,19 @@
 #'
 #' \item{\code{dia}}{Dia de avaliação. Foi do dia 0 ao dia 82, com
 #'     intervalos próximos de 7 dias, mudando de acordo com a ocorrência
-#'     de finais de semana e feriados. Os pomares foram avaliados das
-#'     mesmas datas.}
+#'     de finais de semana e feriados. Os pomares foram avaliados nas
+#'     mesmas datas pois eram na mesma propriedade afastados por 300
+#'     metros.}
 #'
 #' \item{\code{ramo}}{Variável que indentifica os 30 ramos contendo 10
 #'     folhas cada um, marcados aleatóriamente em 30 árvores diferentes
-#'     (um ramo por árvore) no mesmo pomar. A indentificação é unica por
-#'     pomar.}
+#'     (um ramo por árvore) no mesmo pomar. A indentificação dos ramos é
+#'     unica por pomar.}
 #'
 #' \item{\code{folha}}{Variável que indentifica as 10 folhas marcadas em
 #'     cada ramo, totalizando 300 folhas avaliadas no total de 30 ramos
-#'     por pomar. A indentificação é única por pomar.}
+#'     por pomar. A indentificação das folhas é única por pomar. A
+#'     primeira folha em cada ramo é a folha mais próxima do caule.}
 #'
 #' \item{\code{sever}}{Severidade medida ao longo do tempo em cada uma
 #'     das folhas, em porcentagem de área com lesão de acordo com a
@@ -38,25 +40,27 @@
 #'
 #' }
 #'
-#' @source Moreira, R. R. (http://lattes.cnpq.br/8144030677308566), May
-#'     De Mio, L. L. (http://lattes.cnpq.br/5306520242222948).
-#'     Universidade Federal do Paraná, SCA, Laboratório de Epidemiologia
-#'     para Manejo Integrado de Doenças em plantas (LEMID).
+#' @source Moreira,
+#'     R. R. (\url{http://lattes.cnpq.br/8144030677308566}), May De Mio,
+#'     L. L. (\url{http://lattes.cnpq.br/5306520242222948}).
+#'     Universidade Federal do Paraná, Setor de Ciências Agrárias,
+#'     Laboratório de Epidemiologia para Manejo Integrado de Doenças em
+#'     Plantas (LEMID).
 #'
 #' @examples
 #'
-#' data(mancha)
-#' str(mancha)
+#' data(leaf_spot)
+#' str(leaf_spot)
 #'
-#' ftable(xtabs(~pomar + dia, data = mancha))
-#' ftable(xtabs(~pomar + ramo + dia, data = mancha))
+#' ftable(xtabs(~pomar + dia, data = leaf_spot))
+#' ftable(xtabs(~pomar + ramo + dia, data = leaf_spot))
 #'
 #' library(lattice)
 #'
 #' # Gráfico de perfil das folhas para 5 ramos em cada pomar.
 #' xyplot(sever ~ dia | ramo + pomar,
 #'        groups = folha,
-#'        data = subset(mancha, ramo <= 5),
+#'        data = subset(leaf_spot, ramo <= 5),
 #'        type = "o")
 #'
 NULL

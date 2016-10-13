@@ -55,19 +55,19 @@ fator que provoca a queda.
 
 ```{r}
 # Estrutura dos dados.
-str(mancha)
+str(leaf_spot)
 
 # Tabela de frequencia.
-ftable(xtabs(~pomar + dia, data = mancha))
+ftable(xtabs(~pomar + dia, data = leaf_spot))
 
 # Tabela de frequência de folhas presas ao ramo (sem folhas perdidas).
-ftable(xtabs(~pomar + dia, data = na.omit(mancha)))
+ftable(xtabs(~pomar + dia, data = na.omit(leaf_spot)))
 
 # Acesse a documentação para mais detalhes.
-# help(mancha, help_type = "html")
+# help(leaf_spot, help_type = "html")
 
 # Convertendo variáveis para fator.
-mancha <- within(mancha, {
+leaf_spot <- within(leaf_spot, {
     pomar <- factor(pomar, labels = c("I", "II"))
     ramo <- factor(ramo)
     folha <- interaction(ramo, folha, drop = TRUE)
@@ -75,7 +75,7 @@ mancha <- within(mancha, {
 
 xyplot(sever ~ dia | ramo,
        groups = folha,
-       data = subset(mancha, pomar == "I"),
+       data = subset(leaf_spot, pomar == "I"),
        type = "o",
        xlab = "Dia de avaliação",
        ylab = "Severidade da mancha foliar (%)",
@@ -84,7 +84,7 @@ xyplot(sever ~ dia | ramo,
 
 xyplot(sever ~ dia | ramo,
        groups = folha,
-       data = subset(mancha, pomar == "II"),
+       data = subset(leaf_spot, pomar == "II"),
        type = "o",
        xlab = "Dia de avaliação",
        ylab = "Severidade da mancha foliar (%)",
@@ -105,7 +105,7 @@ planta, as condições de solo, a exposição do ramo ao sol, etc.
 ## Ajuste de Modelo de Regressão Não Linear
 
 ```{r}
-da <- subset(mancha, pomar == "I")
+da <- subset(leaf_spot, pomar == "I")
 
 # Calibrando o chute inicial.
 start <- list(A = 80, xc = 80, sc = 20)

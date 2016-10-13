@@ -1,13 +1,14 @@
-#' @name ferrugem
+#' @name rust_peach
 #' @title Progresso da Ferrugem em Folhas de Pessegueiro
 #' @description Avaliação semanal da severidade (\% de lesão no limbo
 #'     foliar por meio de escala) da ferrugem (\emph{Tranzschelia
 #'     discolor}) em folhas de pessegueiro (\emph{Prunus persica}).
-#'     Foram marcados 2 ramos por árvore (um de cada lado da planta)
+#'     Foram marcados 2 ramos por árvore (em lados opostos na planta)
 #'     contendo 10 folhas marcadas em cada um.  Foram testadas também 7
-#'     doses de nitrogênio em combinação com tratamentos de poda. O
+#'     doses de nitrogênio em combinação com tratamentos de poda.  O
 #'     delineamento foi de blocos casualizados e o ensaio foi repetido
-#'     em 3 safras no mesmo pomar.
+#'     em 3 safras no mesmo pomar. As plantas foram as mesmas nas 3
+#'     safras, no entanto, os ramos foram diferentes.
 #' @format Um \code{data.frame} com 30240 linhas e 8 colunas, em que
 #'
 #' \describe{
@@ -18,8 +19,8 @@
 #' \item{\code{dia}}{Dia de avaliação. Foi do dia 0 ao dia 84, com
 #'     intervalos de 7 dias, perfazento um total de 12 níveis.}
 #'
-#' \item{\code{folha}}{Folhas marcadas em 2 ramos por árvore (um de cada
-#'     lado). As foram eram observadas a cada 7 dias, portanto, os
+#' \item{\code{folha}}{Folhas marcadas em 2 ramos por árvore (em lados
+#'     opostos). As foram eram observadas a cada 7 dias, portanto, os
 #'     registros em uma folha são no máximo 12 de forma longitudinal. A
 #'     indentificação das folhas é única.}
 #'
@@ -44,21 +45,22 @@
 #'
 #' }
 #'
-#' @source Moreira, R. R. (http://lattes.cnpq.br/8144030677308566), May
-#'     De Mio, L. L. (http://lattes.cnpq.br/5306520242222948).
+#' @source Dolinski,
+#'     M. A. (\url{http://lattes.cnpq.br/5554247933578584}), May De Mio,
+#'     L. L. (\url{http://lattes.cnpq.br/5306520242222948}).
 #'     Universidade Federal do Paraná, SCA, Laboratório de Epidemiologia
 #'     para Manejo Integrado de Doenças em plantas (LEMID).
 #'
 #' @examples
 #'
-#' data(ferrugem)
-#' str(ferrugem)
+#' data(rust_peach)
+#' str(rust_peach)
 #'
 #' # Combinações entre poda x nitrogênio em cada safra.
-#' ftable(xtabs(~safra + poda + nitro, data = ferrugem))
+#' ftable(xtabs(~safra + poda + nitro, data = rust_peach))
 #'
 #' # Combinações entre bloco x dia em cada safra.
-#' ftable(xtabs(~safra + bloco + dia, data = ferrugem))
+#' ftable(xtabs(~safra + bloco + dia, data = rust_peach))
 #'
 #' library(lattice)
 #' library(latticeExtra)
@@ -67,25 +69,25 @@
 #' useOuterStrips(
 #'     xyplot(sever ~ dia | nitro + bloco,
 #'            groups = poda,
-#'            data = subset(ferrugem, safra == "1"),
+#'            data = subset(rust_peach, safra == "1"),
 #'            type = c("p", "smooth"),
 #'            xlab = "Dia de avaliação",
 #'            ylab = "Severidade (%)"))
 #'
 #' xyplot(sever ~ dia | folha, type = "l",
-#'        data = subset(ferrugem, safra == "1" &
-#'                                bloco == "I" &
-#'                                nitro == 0 &
-#'                                poda == 1 &
-#'                                lado == 1),
+#'        data = subset(rust_peach, safra == "1" &
+#'                                  bloco == "I" &
+#'                                  nitro == 0 &
+#'                                  poda == 1 &
+#'                                  lado == 1),
 #'        xlab = "Dia de avaliação",
 #'        ylab = "Severidade (%)")
 #'
 #' # As 10 folhas de um ramo.
-#' subset(ferrugem, safra == "1" &
-#'                  bloco == "I" &
-#'                  nitro == 0 &
-#'                  poda == 1 &
-#'                  lado == 1)
+#' subset(rust_peach, safra == "1" &
+#'                    bloco == "I" &
+#'                    nitro == 0 &
+#'                    poda == 1 &
+#'                    lado == 1)
 #'
 NULL
