@@ -2,8 +2,8 @@
 title: >
   Efeito de Inseticidas no Parasitismo de *Trichogramma* em Ovos de Lagartas da Soja
 author: >
-  [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes) &
-  [Tamara Akemi Takahashi](http://lattes.cnpq.br/0906035116528938)
+  [Tamara Akemi Takahashi](http://lattes.cnpq.br/0906035116528938) &
+  [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes)
 date: "`r Sys.Date()`"
 vignette: >
   %\VignetteIndexEntry{Efeito de Inseticidas no Parasitismo de Trichogramma em Ovos de Lagartas da Soja}
@@ -14,12 +14,25 @@ vignette: >
 ## Definições da Sessão
 
 ```{r, message=FALSE, results="hide"}
+#-----------------------------------------------------------------------
+# Carregando pacotes e funções necessárias.
+
 # https://github.com/walmes/wzRfun
 # devtools::install_github("walmes/wzRfun")
 library(wzRfun)
 library(lattice)
 library(latticeExtra)
 library(plyr)
+library(doBy)
+library(multcomp)
+
+gap <- function(groups, gap = NULL) {
+    if (is.null(gap)) {
+        gap <- 0.5/nlevels(groups)
+    }
+    d <- 2 * ((as.numeric(groups) - 1)/(nlevels(groups) - 1)) - 1
+    return(gap * d)
+}
 ```
 ```{r, eval=FALSE}
 library(wzCoop)
@@ -31,28 +44,56 @@ source("config/setup.R")
 ****
 ## Análise Exploratória
 
+Estes dados são resultados de um experimento fatorial triplo, conduzido
+em laboratório, que estudou o efeito de 7 inseticidas no processo de pré
+parasitismo de duas espécies de *Trichogramma* em duas espécies de
+lagastas da soja (hospedeiros). Várias variáveis resposta foram
+registradas com a finalidade de descrever o efeito dos inseticidas para
+as espécies de parasitóide e hospedeiro, considerando por exemplo, o
+tempo de vida da fêmea ovopositora, o tempo para eclosão dos ovos, a
+razão sexual observada e a taxa de emergência dos ovos parasitados.
+
 ```{r}
+#-----------------------------------------------------------------------
 # Estrutura dos dados.
+
 str(egg_parasitoid)
+
+# levels(egg_parasitoid$inset)
+# Português       Inglês
+# Clorpirifós     Clorpyrifos
+# Deltametrina    Deltamethrin
+# Espinetoram     Spinetoram
+# Flubendiamida   Flubendiamide
+# Indoxacarbe     Indoxacarb
+# Novalurom       Novaluron
+# Testemunha      Control
+
+l <- c("Clorpyrifos",
+       "Deltamethrin",
+       "Spinetoram",
+       "Flubendiamide",
+       "Indoxacarb",
+       "Novaluron",
+       "Control")
 
 # Níveis dos fatores experimentais.
 summary(egg_parasitoid[, 1:3])
 
 # Usando nomes curtos para os níveis.
 egg <- egg_parasitoid
-egg <- within(egg, {
-    inset <- factor(inset,
-                    labels = substr(levels(egg_parasitoid$inset),
-                                    start = 1, stop = 4))
-    paras <- factor(paras, labels = c("Atopo", "Preti"))
-    hosp <- factor(hosp, labels = c("Anti", "Chry"))
-})
+levels(egg$inset) <- substr(l, 0, 5)
+levels(egg$paras) <- c("Atopo", "Preti")
+levels(egg$hosp) <- c("Anti", "Chry")
+
+# Letra maiúscula para representar os fatores estudados.
+names(egg)[1:3] <- c("I", "P", "H")
 
 # Tabela de frequencia planejada do experimento (7 x 2 x 2 com 20 rep.).
-ftable(xtabs(~inset + paras + hosp, data = egg))
+ftable(xtabs(~I + P + H, data = egg))
 
 # Tabela de frequência só para casos completos.
-ftable(xtabs(~inset + paras + hosp, data = na.omit(egg)))
+ftable(xtabs(~I + P + H, data = na.omit(egg)))
 ```
 
 ****
@@ -60,114 +101,99 @@ ftable(xtabs(~inset + paras + hosp, data = na.omit(egg)))
 
 A sobreviência da fêmea, 24 horas após a liberação no tubo de ensaio
 para parasitar os ovos, é representada por uma variável (`mort`)
-dicotômica onde 0 indica que a fêmea sobreviveu e 1 que não não
-sobreviveu.
+dicotômica onde 1 indica que a fêmea sobreviveu e 0 que não não
+sobreviveu. A variável `vivo` é o oposto da variável `mort`.
 
 ```{r}
-# Desfechos: 0 = sobreviveu, 1 = não sobreviveu.
-ftable(xtabs(mort ~ inset + paras + hosp, data = egg))
+# Desfechos de vivo: 1 = sobreviveu, 0 = não sobreviveu.
+egg$vivo <- 1 - egg$mort
+ftable(xtabs(vivo ~ I + P + H, data = egg))
 
 # Como Clorpirifós e Testemunha são controles (-) e (+), onde a
 # expectativa era nenhuma e total sobreviência, serão removidos da
 # análise.
 
-m0 <- glm(mort ~ (inset + paras + hosp)^3,
-          # data = subset(egg, !inset %in% c("Test", "Clor", "Espi")),
+m0 <- glm(vivo ~ (I + P + H)^3,
+          # data = subset(egg, !I %in% c("Test", "Clor", "Espi")),
           data = subset(egg),
           family = quasibinomial)
 anova(m0, test = "F")
-# drop1(m0, test = "F")
 
-m1 <- update(m0, mort ~ inset * (paras + hosp))
+m1 <- update(m0, . ~ I * (P + H))
 anova(m1, test = "F")
 anova(m1, m0, test = "F")
-# drop1(m1, test = "F")
-# summary(m1)
-
-# m2 <- update(m0, mort ~ inset * hosp + paras)
-# anova(m2, test = "F")
-# anova(m2, m0, test = "F")
-# # drop1(m2, test = "F")
-# summary(m2)
-
-# #-----------------------------------------------------------------------
-# # Remover celas com 0 ou 20 que não estimativa de verossimilhança para a
-# # probabilidade de sobreviência.
-#
-# egg2 <- ddply(egg, .(inset, paras, hosp),
-#               function(x) {
-#                   if(var(x$mort) > 0) {
-#                       return(x)
-#                   } else {
-#                       return(NULL)
-#                   }
-#               })
-# str(egg2)
-#
-# # Celas ausentes estão com "." no lugar (quase metade).
-# tb <- ftable(xtabs(mort ~ inset + paras + hosp, data = egg2))
-# print.table(tb, zero.print = ".")
-# # tb
-#
-# m0 <- glm(mort ~ (inset + paras + hosp)^2,
-#           data = egg2,
-#           family = quasibinomial)
-# anova(m0, test = "F")
-#
-# m1 <- update(m0, mort ~ inset + paras + hosp)
-# anova(m1, test = "F")
-# drop1(m1, test = "F")
-# summary(m1)
-#
-# m2 <- update(m0, mort ~ inset)
-# anova(m2, m0, test = "F")
-# anova(m2, test = "F")
-#
-# summary(m2)
 
 #-----------------------------------------------------------------------
-# Predição.
+# Comparações entre hospedeiros dentro de inseticida x parasitóide.
 
-pred <- with(m0$xlevels,
-             expand.grid(inset = inset,
-                         paras = paras,
-                         hosp = hosp,
-                         KEEP.OUT.ATTRS = FALSE))
-str(pred)
+lsm <- LSmatrix(m1, effect = c("I", "P", "H"))
+grid <- equallevels(attr(lsm, "grid"), egg)
 
-fit <- predict(m1, newdata = pred, se.fit = TRUE)
-prob <- with(fit, {
-    me <- outer(c(lwr = -1, fit = 0, upr = 1) * qnorm(0.975),
-                se.fit, FUN = "*")
-    eta <- sweep(x = t(me), MARGIN = 1, STATS = fit, FUN = "+")
-    binomial()$linkinv(eta)
-})
+L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(egg$H))
 
-pred <- cbind(pred, as.data.frame(prob))
-pred <- pred[with(pred, order(paras, inset, hosp)), ]
+cmp <- lapply(L, apmc, model = m1, focus = "H")
 
-segplot(inset ~ lwr + upr | paras,
+pred <- ldply(cmp)
+cmp <- ldply(strsplit(pred$.id, "\\."))
+pred <- cbind(as.data.frame(cmp), pred[, -1])
+names(pred)[1:2] <- names(grid)[1:2]
+
+# Passa para a escala de probabilidade.
+i <- c("fit", "lwr", "upr")
+pred[, i] <- sapply(pred[, i], m1$family$linkinv)
+
+# Ordena da tabela.
+pred <- pred[with(pred, order(P, I, H)), ]
+
+# Intervalos de confiança do tamanho do suporte terão apenas o ponto
+# representado.
+i <- pred$upr - pred$lwr > 0.99
+if (any(i)) {
+    pred[i, ]$lwr <- pred[i, ]$lwr <- NA
+}
+
+# Reordena os níveis pela probalidade de sobreviência.
+pred$I <- reorder(pred$I, pred$fit)
+
+# Legenda.
+key <- list(points = list(pch = c(1, 19)),
+            text = list(levels(egg_parasitoid$hosp)),
+            title = "Parasitoids", cex.title = 1.1)
+
+# Gráfico de segmentos.
+segplot(I ~ lwr + upr | P,
         centers = fit,
         data = pred,
         xlab = "Insticides",
-        ylab = "Probability of surviving",
+        ylab = "Probability of surviving a 24h period",
         draw = FALSE,
         horizontal = FALSE,
-        groups = hosp,
-        gap = 0.1,
+        groups = H,
+        key = key,
+        strip = strip.custom(
+            factor.levels = levels(egg_parasitoid$paras)),
+        gap = 0.15,
         panel = panel.groups.segplot,
-        pch = c(1, 19)[as.integer(pred$hosp)])
+        pch = key$points$pch[as.integer(pred$H)]) +
+    layer(panel.text(y = centers[subscripts],
+                     x = as.integer(z)[subscripts] + gap(groups, gap),
+                     labels = pred$cld[subscripts],
+                     adj = -0.25 * c(1, 1)))
 ```
 
 ****
 ## Ovos Parasitados
 
 ```{r}
-ftable(xtabs(complete.cases(egg) ~ inset + hosp + paras, data = egg))
+#-----------------------------------------------------------------------
 
-# Remover Clor e Espi pois tem informação inferior a metade com relação
+ftable(xtabs(complete.cases(egg) ~ I + H + P, data = egg))
+
+# Remover Clorp e Spine pois tem informação inferior a metade com relação
 # aos demais.
-egg2 <- droplevels(subset(egg, !inset %in% c("Clor", "Espi")))
+
+egg2 <- droplevels(subset(egg, !I %in% c("Clorp", "Spine")))
 str(egg2)
 ```
 
@@ -175,10 +201,10 @@ str(egg2)
 #-----------------------------------------------------------------------
 # Análise exploratória.
 
-ftable(xtabs(!is.na(opar) ~ inset + paras + hosp, data = egg2))
-ftable(xtabs(opar/otot ~ inset + paras + hosp, data = egg2))
+ftable(xtabs(!is.na(opar) ~ I + P + H, data = egg2))
+# ftable(xtabs(opar/otot ~ I + P + H, data = egg2))
 
-useOuterStrips(xyplot(opar/otot ~ inset | hosp + paras,
+useOuterStrips(xyplot(opar/otot ~ I | H + P,
                       data = egg2,
                       jitter.x = TRUE,
                       type = c("p", "a")))
@@ -186,7 +212,7 @@ useOuterStrips(xyplot(opar/otot ~ inset | hosp + paras,
 #-----------------------------------------------------------------------
 # Ajuste do modelo.
 
-m0 <- glm(cbind(opar, otot - opar) ~ inset * paras * hosp,
+m0 <- glm(cbind(opar, otot - opar) ~ I * P * H,
           data = egg2,
           family = quasibinomial)
 
@@ -198,35 +224,62 @@ anova(m0, test = "F")
 # summary(m0)
 
 #-----------------------------------------------------------------------
-# Predição.
+# Comparações entre hospedeiros dentro de inseticida x parasitóide.
 
-pred <- with(m0$xlevels,
-             expand.grid(inset = inset,
-                         paras = paras,
-                         hosp = hosp,
-                         KEEP.OUT.ATTRS = FALSE))
-str(pred)
+lsm <- LSmatrix(m0, effect = c("I", "P", "H"))
+grid <- equallevels(attr(lsm, "grid"), egg2)
 
-fit <- predict(m0, newdata = pred, se.fit = TRUE)
-prob <- with(fit, {
-    me <- outer(c(lwr = -1, fit = 0, upr = 1) * qnorm(0.975),
-                se.fit, FUN = "*")
-    eta <- sweep(x = t(me), MARGIN = 1, STATS = fit, FUN = "+")
-    binomial()$linkinv(eta)
-})
+L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(egg$H))
 
-pred <- cbind(pred, as.data.frame(prob))
-pred <- pred[with(pred, order(paras, inset, hosp)), ]
+cmp <- lapply(L, apmc, model = m0, focus = "H")
 
-segplot(inset ~ lwr + upr | paras,
+pred <- ldply(cmp)
+cmp <- ldply(strsplit(pred$.id, "\\."))
+pred <- cbind(as.data.frame(cmp), pred[, -1])
+names(pred)[1:2] <- names(grid)[1:2]
+
+# Passa para a escala de probabilidade.
+i <- c("fit", "lwr", "upr")
+pred[, i] <- sapply(pred[, i], m0$family$linkinv)
+
+# Ordena da tabela.
+pred <- pred[with(pred, order(P, I, H)), ]
+
+# Intervalos de confiança do tamanho do suporte terão apenas o ponto
+# representado.
+i <- pred$upr - pred$lwr > 0.99
+if (any(i)) {
+    pred[i, ]$lwr <- pred[i, ]$lwr <- NA
+}
+
+# Reordena os níveis pela probalidade de sobreviência.
+pred$I <- reorder(pred$I, pred$fit)
+
+# Legenda.
+key <- list(points = list(pch = c(1, 19)),
+            text = list(levels(egg_parasitoid$hosp)),
+            title = "Parasitoids", cex.title = 1.1)
+
+# Gráfico de segmentos.
+segplot(I ~ lwr + upr | P,
         centers = fit,
         data = pred,
+        xlab = "Insticides",
+        ylab = "Proportion of parasited eggs",
         draw = FALSE,
         horizontal = FALSE,
-        groups = hosp,
-        gap = 0.1,
+        groups = H,
+        key = key,
+        strip = strip.custom(
+            factor.levels = levels(egg_parasitoid$paras)),
+        gap = 0.15,
         panel = panel.groups.segplot,
-        pch = c(1, 19)[as.integer(pred$hosp)])
+        pch = key$points$pch[as.integer(pred$H)]) +
+    layer(panel.text(y = centers[subscripts],
+                     x = as.integer(z)[subscripts] + gap(groups, gap),
+                     labels = pred$cld[subscripts],
+                     adj = -0.25 * c(1, 1)))
 ```
 
 ****
@@ -236,10 +289,10 @@ segplot(inset ~ lwr + upr | paras,
 #-----------------------------------------------------------------------
 # Análise exploratória.
 
-ftable(xtabs(!is.na(oeme) ~ inset + paras + hosp, data = egg2))
-ftable(xtabs(oeme/otot ~ inset + paras + hosp, data = egg2))
+ftable(xtabs(!is.na(oeme) ~ I + P + H, data = egg2))
+# ftable(xtabs(oeme/otot ~ I + P + H, data = egg2))
 
-useOuterStrips(xyplot(oeme/otot ~ inset | hosp + paras,
+useOuterStrips(xyplot(oeme/otot ~ I | H + P,
                       data = egg2[!is.na(egg2$oeme), ],
                       jitter.x = TRUE,
                       type = c("p", "a")))
@@ -247,7 +300,7 @@ useOuterStrips(xyplot(oeme/otot ~ inset | hosp + paras,
 #-----------------------------------------------------------------------
 # Ajuste do modelo.
 
-m0 <- glm(cbind(oeme, otot - oeme) ~ inset * paras * hosp,
+m0 <- glm(cbind(oeme, otot - oeme) ~ I * P * H,
           data = egg2,
           family = quasibinomial)
 
@@ -256,44 +309,71 @@ plot(m0)
 layout(1)
 
 anova(m0, test = "F")
-# summary(m0)
 
 #-----------------------------------------------------------------------
-# Predição.
+# Comparações entre hospedeiros dentro de inseticida x parasitóide.
 
-pred <- with(m0$xlevels,
-             expand.grid(inset = inset,
-                         paras = paras,
-                         hosp = hosp,
-                         KEEP.OUT.ATTRS = FALSE))
-str(pred)
+lsm <- LSmatrix(m0, effect = c("I", "P", "H"))
+grid <- equallevels(attr(lsm, "grid"), egg2)
 
-fit <- predict(m0, newdata = pred, se.fit = TRUE)
-prob <- with(fit, {
-    me <- outer(c(lwr = -1, fit = 0, upr = 1) * qnorm(0.975),
-                se.fit, FUN = "*")
-    eta <- sweep(x = t(me), MARGIN = 1, STATS = fit, FUN = "+")
-    binomial()$linkinv(eta)
-})
+L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(egg$H))
 
-pred <- cbind(pred, as.data.frame(prob))
-pred <- pred[with(pred, order(paras, inset, hosp)), ]
+cmp <- lapply(L, apmc, model = m0, focus = "H")
 
-segplot(inset ~ lwr + upr | paras,
+pred <- ldply(cmp)
+cmp <- ldply(strsplit(pred$.id, "\\."))
+pred <- cbind(as.data.frame(cmp), pred[, -1])
+names(pred)[1:2] <- names(grid)[1:2]
+
+# Passa para a escala de probabilidade.
+i <- c("fit", "lwr", "upr")
+pred[, i] <- sapply(pred[, i], m0$family$linkinv)
+
+# Ordena da tabela.
+pred <- pred[with(pred, order(P, I, H)), ]
+
+# Intervalos de confiança do tamanho do suporte terão apenas o ponto
+# representado.
+i <- pred$upr - pred$lwr > 0.99
+if (any(i)) {
+    pred[i, ]$lwr <- pred[i, ]$lwr <- NA
+}
+
+# Reordena os níveis pela probalidade de sobreviência.
+pred$I <- reorder(pred$I, pred$fit)
+
+# Legenda.
+key <- list(points = list(pch = c(1, 19)),
+            text = list(levels(egg_parasitoid$hosp)),
+            title = "Parasitoids", cex.title = 1.1)
+
+# Gráfico de segmentos.
+segplot(I ~ lwr + upr | P,
         centers = fit,
         data = pred,
+        xlab = "Insticides",
+        ylab = "Probability of egg emergency",
         draw = FALSE,
         horizontal = FALSE,
-        groups = hosp,
-        gap = 0.1,
+        groups = H,
+        key = key,
+        strip = strip.custom(
+            factor.levels = levels(egg_parasitoid$paras)),
+        gap = 0.15,
         panel = panel.groups.segplot,
-        pch = c(1, 19)[as.integer(pred$hosp)])
+        pch = key$points$pch[as.integer(pred$H)]) +
+    layer(panel.text(y = centers[subscripts],
+                     x = as.integer(z)[subscripts] + gap(groups, gap),
+                     labels = pred$cld[subscripts],
+                     adj = -0.25 * c(1, 1)))
 ```
 
 ****
 ## Tempo de Incubação dos Parasitóides
 
-Essa variável apresenta pouca variação para algumas celas.
+Essa variável apresenta pouca variação para algumas celas, portanto não
+informação suficiente para ser analisada.
 
 ****
 ## Razão Sexual
@@ -302,8 +382,8 @@ Essa variável apresenta pouca variação para algumas celas.
 #-----------------------------------------------------------------------
 # Análise exploratória.
 
-useOuterStrips(xyplot(femea + macho ~ inset | hosp + paras,
-                      data = egg2[!is.na(egg2$oeme), ],
+useOuterStrips(xyplot(femea + macho ~ I | H + P,
+                      data = egg2[!is.na(egg2$macho + egg2$femea), ],
                       jitter.x = TRUE,
                       auto.key = TRUE,
                       type = c("p", "a")))
@@ -311,7 +391,7 @@ useOuterStrips(xyplot(femea + macho ~ inset | hosp + paras,
 #-----------------------------------------------------------------------
 # Ajuste do modelo.
 
-m0 <- glm(cbind(femea, macho) ~ inset * paras * hosp,
+m0 <- glm(cbind(femea, macho) ~ I * P * H,
           data = egg2,
           family = quasibinomial)
 
@@ -322,7 +402,7 @@ layout(1)
 anova(m0, test = "F")
 # summary(m0)
 
-m1 <- glm(cbind(femea, macho) ~ paras * hosp,
+m1 <- glm(cbind(femea, macho) ~ P * H,
           data = egg2,
           family = quasibinomial)
 
@@ -335,34 +415,60 @@ anova(m1, test = "F")
 # summary(m1)
 
 #-----------------------------------------------------------------------
-# Predição.
+# Comparações entre hospedeiros dentro de inseticida x parasitóide.
 
-pred <- with(m1$xlevels,
-             expand.grid(paras = paras,
-                         hosp = hosp,
-                         KEEP.OUT.ATTRS = FALSE))
-str(pred)
+lsm <- LSmatrix(m1, effect = c("P", "H"))
+grid <- equallevels(attr(lsm, "grid"), egg2)
 
-fit <- predict(m1, newdata = pred, se.fit = TRUE)
-prob <- with(fit, {
-    me <- outer(c(lwr = -1, fit = 0, upr = 1) * qnorm(0.975),
-                se.fit, FUN = "*")
-    eta <- sweep(x = t(me), MARGIN = 1, STATS = fit, FUN = "+")
-    binomial()$linkinv(eta)
-})
+L <- by(lsm, INDICES = with(grid, P), FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(egg2$H))
 
-pred <- cbind(pred, as.data.frame(prob))
-pred <- pred[with(pred, order(paras, hosp)), ]
+cmp <- lapply(L, apmc, model = m1, focus = "H")
 
-segplot(paras ~ lwr + upr,
+pred <- ldply(cmp)
+# cmp <- ldply(strsplit(pred$.id, "\\."))
+# pred <- cbind(as.data.frame(cmp), pred[, -1])
+names(pred)[1] <- names(grid)[1]
+pred <- equallevels(pred, egg2)
+
+# Passa para a escala de probabilidade.
+i <- c("fit", "lwr", "upr")
+pred[, i] <- sapply(pred[, i], m0$family$linkinv)
+
+# Ordena da tabela.
+pred <- pred[with(pred, order(P, H)), ]
+
+# Intervalos de confiança do tamanho do suporte terão apenas o ponto
+# representado.
+i <- pred$upr - pred$lwr > 0.99
+if (any(i)) {
+    pred[i, ]$lwr <- pred[i, ]$lwr <- NA
+}
+
+# Legenda.
+key <- list(points = list(pch = c(1, 19)),
+            text = list(levels(egg_parasitoid$hosp)),
+            title = "Parasitoids", cex.title = 1.1)
+
+# Gráfico de segmentos.
+segplot(P ~ lwr + upr,
         centers = fit,
         data = pred,
+        xlab = "Host species",
+        ylab = "Proportion of female parasitoids",
         draw = FALSE,
         horizontal = FALSE,
-        groups = hosp,
-        gap = 0.05,
+        groups = H,
+        key = key,
+        strip = strip.custom(
+            factor.levels = levels(egg_parasitoid$paras)),
+        gap = 0.15,
         panel = panel.groups.segplot,
-        pch = c(1, 19)[as.integer(pred$hosp)])
+        pch = key$points$pch[as.integer(pred$H)]) +
+    layer(panel.text(y = centers[subscripts],
+                     x = as.integer(z)[subscripts] + gap(groups, gap),
+                     labels = pred$cld[subscripts],
+                     adj = -0.25 * c(1, 1)))
 ```
 
 ****
@@ -374,8 +480,8 @@ segplot(paras ~ lwr + upr,
 
 egg2$pem <- with(egg2, femea + macho)
 
-useOuterStrips(xyplot(pem + pne ~ inset | hosp + paras,
-                      data = egg2[!is.na(egg2$oeme), ],
+useOuterStrips(xyplot(pem + pne ~ I | H + P,
+                      data = egg2[!is.na(egg2$pem + egg2$pne), ],
                       jitter.x = TRUE,
                       auto.key = TRUE,
                       type = c("p", "a")))
@@ -383,7 +489,7 @@ useOuterStrips(xyplot(pem + pne ~ inset | hosp + paras,
 #-----------------------------------------------------------------------
 # Ajuste do modelo.
 
-m0 <- glm(cbind(pem, pne) ~ inset * paras * hosp,
+m0 <- glm(cbind(pem, pne) ~ I * P * H,
           data = egg2,
           family = quasibinomial)
 
@@ -395,35 +501,62 @@ anova(m0, test = "F")
 # summary(m0)
 
 #-----------------------------------------------------------------------
-# Predição.
+# Comparações entre hospedeiros dentro de inseticida x parasitóide.
 
-pred <- with(m0$xlevels,
-             expand.grid(inset = inset,
-                         paras = paras,
-                         hosp = hosp,
-                         KEEP.OUT.ATTRS = FALSE))
-str(pred)
+lsm <- LSmatrix(m0, effect = c("I", "P", "H"))
+grid <- equallevels(attr(lsm, "grid"), egg2)
 
-fit <- predict(m0, newdata = pred, se.fit = TRUE)
-prob <- with(fit, {
-    me <- outer(c(lwr = -1, fit = 0, upr = 1) * qnorm(0.975),
-                se.fit, FUN = "*")
-    eta <- sweep(x = t(me), MARGIN = 1, STATS = fit, FUN = "+")
-    binomial()$linkinv(eta)
-})
+L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(egg2$H))
 
-pred <- cbind(pred, as.data.frame(prob))
-pred <- pred[with(pred, order(paras, inset, hosp)), ]
+cmp <- lapply(L, apmc, model = m0, focus = "H")
 
-segplot(inset ~ lwr + upr | paras,
+pred <- ldply(cmp)
+cmp <- ldply(strsplit(pred$.id, "\\."))
+pred <- cbind(as.data.frame(cmp), pred[, -1])
+names(pred)[1:2] <- names(grid)[1:2]
+
+# Passa para a escala de probabilidade.
+i <- c("fit", "lwr", "upr")
+pred[, i] <- sapply(pred[, i], m0$family$linkinv)
+
+# Ordena da tabela.
+pred <- pred[with(pred, order(P, I, H)), ]
+
+# Intervalos de confiança do tamanho do suporte terão apenas o ponto
+# representado.
+i <- pred$upr - pred$lwr > 0.99
+if (any(i)) {
+    pred[i, ]$lwr <- pred[i, ]$lwr <- NA
+}
+
+# Reordena os níveis pela probalidade de sobreviência.
+pred$I <- reorder(pred$I, pred$fit)
+
+# Legenda.
+key <- list(points = list(pch = c(1, 19)),
+            text = list(levels(egg_parasitoid$hosp)),
+            title = "Parasitoids", cex.title = 1.1)
+
+# Gráfico de segmentos.
+segplot(I ~ lwr + upr | P,
         centers = fit,
         data = pred,
+        xlab = "Insticides",
+        ylab = "Probability of surviving a 24h period",
         draw = FALSE,
         horizontal = FALSE,
-        groups = hosp,
-        gap = 0.1,
+        groups = H,
+        key = key,
+        strip = strip.custom(
+            factor.levels = levels(egg_parasitoid$paras)),
+        gap = 0.15,
         panel = panel.groups.segplot,
-        pch = c(1, 19)[as.integer(pred$hosp)])
+        pch = key$points$pch[as.integer(pred$H)]) +
+    layer(panel.text(y = centers[subscripts],
+                     x = as.integer(z)[subscripts] + gap(groups, gap),
+                     labels = pred$cld[subscripts],
+                     adj = -0.25 * c(1, 1)))
 ```
 
 ****
@@ -435,7 +568,7 @@ segplot(inset ~ lwr + upr | paras,
 
 egg2$ptot <- with(egg2, femea + macho + pne)
 
-useOuterStrips(xyplot(ptot ~ inset | hosp + paras,
+useOuterStrips(xyplot(ptot ~ I | H + P,
                       data = egg2[!is.na(egg2$ptot), ],
                       jitter.x = TRUE,
                       auto.key = TRUE,
@@ -444,7 +577,7 @@ useOuterStrips(xyplot(ptot ~ inset | hosp + paras,
 #-----------------------------------------------------------------------
 # Ajuste do modelo.
 
-m0 <- glm(ptot ~ inset * paras * hosp,
+m0 <- glm(ptot ~ I * P * H,
           data = egg2,
           family = quasipoisson)
 
@@ -456,37 +589,56 @@ anova(m0, test = "F")
 # summary(m0)
 
 #-----------------------------------------------------------------------
-# Predição.
+# Comparações entre hospedeiros dentro de inseticida x parasitóide.
 
-pred <- with(m0$xlevels,
-             expand.grid(inset = inset,
-                         paras = paras,
-                         hosp = hosp,
-                         KEEP.OUT.ATTRS = FALSE))
-str(pred)
+lsm <- LSmatrix(m0, effect = c("I", "P", "H"))
+grid <- equallevels(attr(lsm, "grid"), egg2)
 
-fit <- predict(m0, newdata = pred, se.fit = TRUE)
-prob <- with(fit, {
-    me <- outer(c(lwr = -1, fit = 0, upr = 1) * qnorm(0.975),
-                se.fit, FUN = "*")
-    eta <- sweep(x = t(me), MARGIN = 1, STATS = fit, FUN = "+")
-    poisson()$linkinv(eta)
-})
+L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(egg2$H))
 
-pred <- cbind(pred, as.data.frame(prob))
-pred <- pred[with(pred, order(paras, inset, hosp)), ]
+cmp <- lapply(L, apmc, model = m0, focus = "H")
 
-segplot(inset ~ lwr + upr | paras,
+pred <- ldply(cmp)
+cmp <- ldply(strsplit(pred$.id, "\\."))
+pred <- cbind(as.data.frame(cmp), pred[, -1])
+names(pred)[1:2] <- names(grid)[1:2]
+
+# Passa para a escala de probabilidade.
+i <- c("fit", "lwr", "upr")
+pred[, i] <- sapply(pred[, i], m0$family$linkinv)
+
+# Ordena da tabela.
+pred <- pred[with(pred, order(P, I, H)), ]
+
+# Reordena os níveis pela probalidade de sobreviência.
+pred$I <- reorder(pred$I, pred$fit)
+
+# Legenda.
+key <- list(points = list(pch = c(1, 19)),
+            text = list(levels(egg_parasitoid$hosp)),
+            title = "Parasitoids", cex.title = 1.1)
+
+# Gráfico de segmentos.
+segplot(I ~ lwr + upr | P,
         centers = fit,
         data = pred,
+        xlab = "Insticides",
+        ylab = "Total of parasitoids",
         draw = FALSE,
         horizontal = FALSE,
-        groups = hosp,
-        gap = 0.1,
+        groups = H,
+        key = key,
+        strip = strip.custom(
+            factor.levels = levels(egg_parasitoid$paras)),
+        gap = 0.15,
         panel = panel.groups.segplot,
-        pch = c(1, 19)[as.integer(pred$hosp)])
+        pch = key$points$pch[as.integer(pred$H)]) +
+    layer(panel.text(y = centers[subscripts],
+                     x = as.integer(z)[subscripts] + gap(groups, gap),
+                     labels = pred$cld[subscripts],
+                     adj = -0.25 * c(1, 1)))
 ```
-
 
 ****
 ## Session information
@@ -534,8 +686,8 @@ abline(h = max(l) - 2 * qchisq(0.95, 1), v = 0.95, col = 2)
 library(arm)
 
 # Cauchy(0, 1) prior.
-m0 <- bayesglm(mort ~ (inset + paras + hosp)^2,
-               data = subset(egg, !inset %in% c("Test", "Clor")),
+m0 <- bayesglm(mort ~ (I + P + H)^2,
+               data = subset(egg, !I %in% c("Test", "Clor")),
                family = quasibinomial)
 summary(m0)
 anova(m0, test = "Chisq")
