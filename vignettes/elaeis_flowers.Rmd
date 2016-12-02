@@ -1,0 +1,208 @@
+---
+title: >
+  Número de Flores de Dendezeiro
+author: >
+  [Gustavo Azevedo Campos](http://lattes.cnpq.br/8389366082736320),
+  [Rosiana Rodrigues Alves](http://lattes.cnpq.br/3912077777598495),
+  [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes)
+date: "`r Sys.Date()`"
+vignette: >
+  %\VignetteIndexEntry{Número de Flores de Dendezeiro}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Definições da Sessão
+
+```{r, message=FALSE, results="hide"}
+#-----------------------------------------------------------------------
+# Carregando pacotes e funções necessárias.
+
+# https://github.com/walmes/wzRfun
+# devtools::install_github("walmes/wzRfun")
+library(wzRfun)
+library(lattice)
+library(latticeExtra)
+library(doBy)
+library(multcomp)
+```
+```{r, eval=FALSE}
+library(wzCoop)
+```
+```{r setup, include=FALSE}
+source("config/setup.R")
+```
+
+****
+## Análise Exploratória
+
+```{r}
+#-----------------------------------------------------------------------
+# Estrutura dos dados.
+
+data(elaeis_flowers)
+
+# Nome curto para agilizar a digitação.
+ela <- elaeis_flowers
+str(ela)
+
+ela$ue <- with(ela,
+               interaction(cult, bloc, plant,
+                           drop = TRUE))
+levels(ela$ue) <- 1:nlevels(ela$ue)
+
+L <- list(columns = 4, title = "Blocos", cex.title = 1.1)
+
+xyplot(tot ~ days | cult,
+       groups = bloc,
+       data = ela,
+       type = c("p", "a"),
+       auto.key = L,
+       ylab = "Total de flores",
+       xlab = "Dias")
+
+xyplot(male + female ~ days | ue,
+       data = ela,
+       type = "o",
+       auto.key = TRUE,
+       as.table = TRUE,
+       strip = FALSE,
+       ylab = "Total de flores",
+       xlab = "Dias")
+
+xyplot(abort ~ days | cult,
+       groups = bloc,
+       data = ela,
+       type = c("p", "a"),
+       auto.key = L,
+       ylab = "Total de flores",
+       xlab = "Dias")
+
+xyplot(female/tot ~ days | cult,
+       groups = bloc,
+       data = ela,
+       type = c("p", "a"),
+       auto.key = L,
+       ylab = "Total de flores",
+       xlab = "Dias")
+
+#-----------------------------------------------------------------------
+# Soma nas parcelas.
+
+ela2 <- aggregate(cbind(male = male, female = female,
+                        tot = tot, abort = abort) ~ bloc + cult + days,
+                  data = ela,
+                  FUN = sum, na.rm = TRUE)
+```
+
+## Número Total de Flores
+
+```{r}
+#-----------------------------------------------------------------------
+# Ajuste do modelo GLM Poisson.
+
+m0 <- glm(tot ~ bloc + cult * poly(days, deggre = 1),
+          data = ela2,
+          family = poisson)
+
+# Resíduos.
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+# Estimativas dos efeitos e medidas de ajuste.
+summary(m0)
+
+# Quadro de Deviance.
+anova(m0, test = "Chisq")
+
+# Predição.
+pred <- with(ela,
+             expand.grid(bloc = levels(bloc)[1],
+                         cult = levels(cult),
+                         days = seq(min(days), max(days), by = 2)))
+pred$y <- predict(m0, newdata = pred, type = "response")
+
+xyplot(tot ~ days | cult,
+       data = ela2,
+       ylab = "Total de flores",
+       xlab = "Dias") +
+    as.layer(xyplot(y ~ days | cult, data = pred, type = "l"))
+```
+
+****
+## Proporção de Flores Fêmeas
+
+```{r}
+#-----------------------------------------------------------------------
+# Ajuste do modelo GLM Binomial.
+
+m0 <- glm(cbind(female, tot - female) ~
+              bloc + cult * poly(days, deggre = 2),
+          data = ela2,
+          family = quasibinomial)
+
+# Resíduos.
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+# Estimativas dos efeitos e medidas de ajuste.
+summary(m0)
+
+# Quadro de Deviance.
+anova(m0, test = "F")
+
+# Predição.
+pred <- with(ela,
+             expand.grid(bloc = levels(bloc)[1],
+                         cult = levels(cult),
+                         days = seq(min(days), max(days), by = 2)))
+pred$y <- predict(m0, newdata = pred, type = "response")
+
+xyplot(female/tot ~ days | cult,
+       data = ela2,
+       ylab = "Proporção de flores fêmeas",
+       xlab = "Dias") +
+    as.layer(xyplot(y ~ days | cult, data = pred, type = "l"))
+```
+
+```{r}
+library(mgcv)
+
+m0 <- gam(cbind(female, tot - female) ~ bloc + s(days, by = cult),
+          data = ela2,
+          family = quasibinomial)
+
+# plot(m0, pages = 1, residuals = TRUE)
+plot(m0, pages = 1, seWithMean = TRUE)
+
+summary(m0)
+anova(m0)
+
+# # Resíduos.
+# par(mfrow = c(2, 2))
+# qqnorm(residuals(m0, type = "pearson"))
+# layout(1)
+
+pred <- with(ela,
+             expand.grid(bloc = levels(bloc)[1],
+                         cult = levels(cult),
+                         days = seq(min(days), max(days), by = 2)))
+pred$y <- predict(m0, newdata = pred, type = "response")
+
+xyplot(female/tot ~ days | cult,
+       data = ela2,
+       ylab = "Proporção de flores fêmeas",
+       xlab = "Dias") +
+    as.layer(xyplot(y ~ days | cult, data = pred, type = "l"))
+```
+
+****
+## Session information
+
+```{r, echo=FALSE, results="hold"}
+cat(format(Sys.time(), format = "%A, %d de %B de %Y, %H:%M"),
+    "----------------------------------------", sep = "\n")
+sessionInfo()
+```
