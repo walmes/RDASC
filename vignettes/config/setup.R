@@ -4,9 +4,12 @@ opts_chunk$set(cache = FALSE,
                fig.width = 8,
                fig.height = 6,
                fig.align = "center",
+               eval.after = "fig.cap",
                dpi = 100,
                dev = "png",
                warning = FALSE,
+               error = FALSE,
+               message = FALSE,
                dev.args = list(family = "Palatino"))
 options(width = 68)
 
@@ -31,6 +34,13 @@ ps <- list(box.rectangle = list(col = 1, fill = c("gray70")),
            axis.text = list(cex = 0.8))
 trellis.par.set(ps)
 # show.settings()
+
+library(captioner)
+
+tbn_ <- captioner(prefix = "Tabela")
+fgn_ <- captioner(prefix = "Figura")
+tbl_ <- function(label) tb_nums(label, display = "cite")
+fgl_ <- function(label) fg_nums(label, display = "cite")
 
 # Carrega o pacote.
 devtools::load_all()

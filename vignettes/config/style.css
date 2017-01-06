@@ -5,6 +5,10 @@ body, td, caption {
     text-align: none;
 }
 
+:root{
+    --main-color: #35a08b;
+}
+
 body {
     margin: auto;
 }
@@ -72,31 +76,40 @@ img {
 }
 
 blockquote {
-    font-size: 17.5px;
-    width: 90%;
-    border-left: none;
+    font-size: 100%;
+    width: 66%;
+    margin-left: auto;
+    border: none;
+    display: block;
     margin: auto;
 }
 
-blockquote > blockquote > p {
-    color: "red";
+blockquote p {
+    font-style: italic;
+    text-indent: 0em;
+}
+
+blockquote p:last-child {
+    text-indent: 0em;
     text-align: right;
+    font-style: normal;
+    display: inherit;
 }
 
 a {
-    color: #149494;
+    color: var(--main-color);;
     text-decoration: none;
 }
 
 a:hover, a:focus {
-    color: #004E4E;
+    color: var(--main-color);;
     text-decoration: underline;
 }
 
 .list-group-item.active,
 .list-group-item.active:focus,
 .list-group-item.active:hover {
-    background-color: #149494;
+    background-color: var(--main-color);;
 }
 
 .tocify-header {
