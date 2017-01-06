@@ -19,6 +19,7 @@ vignette: >
 
 # https://github.com/walmes/wzRfun
 # devtools::install_github("walmes/wzRfun")
+# devtools::load_all("~/repos/wzRfun")
 library(wzRfun)
 library(lattice)
 library(latticeExtra)
@@ -32,6 +33,39 @@ gap <- function(groups, gap = NULL) {
     }
     d <- 2 * ((as.numeric(groups) - 1)/(nlevels(groups) - 1)) - 1
     return(gap * d)
+}
+
+# Versão da função apmc() para modelos que usam a matriz do modelo ao
+# invés da formula.
+apmc2 <- function(X,
+                  model,
+                  focus,
+                  test = "single-step",
+                  level = 0.05) {
+    if (is.null(rownames(X))) {
+        stop("The X matrix must have row names.")
+    }
+    Xc <- apc(X)
+    g <- multcomp::glht(model, linfct = X)
+    ci <- confint(g, level = 1 - level,
+                  calpha = multcomp::univariate_calpha())$confint
+    ci <- as.data.frame(ci)
+    names(ci) <- tolower(names(ci))
+    names(ci)[1] <- "fit"
+    h <- summary(multcomp::glht(model, linfct = Xc),
+                 test = adjusted(type = test))
+    h$type <- "Tukey"
+    h$focus <- focus
+    # ci$cld <- multcomp::cld(h,
+    #                         level = level,
+    #                         decreasing = TRUE)$mcletters$Letters
+    ci$cld <- cld2(h,
+                   level = level)$mcletters$Letters
+    ci$cld <- ordered_cld(ci$cld, ci$fit)
+    ci <- cbind(rownames(ci), ci)
+    names(ci)[1] <- focus
+    rownames(ci) <- NULL
+    return(ci)
 }
 ```
 ```{r, eval=FALSE}
@@ -61,7 +95,7 @@ str(egg_parasitoid)
 
 # levels(egg_parasitoid$inset)
 # Português       Inglês
-# Clorpirifós     Clorpyrifos
+# Clorpirifós     Chlorpyrifos
 # Deltametrina    Deltamethrin
 # Espinetoram     Spinetoram
 # Flubendiamida   Flubendiamide
@@ -69,7 +103,7 @@ str(egg_parasitoid)
 # Novalurom       Novaluron
 # Testemunha      Control
 
-l <- c("Clorpyrifos",
+l <- c("Chlorpyrifos",
        "Deltamethrin",
        "Spinetoram",
        "Flubendiamide",
@@ -96,6 +130,14 @@ ftable(xtabs(~I + P + H, data = egg))
 ftable(xtabs(~I + P + H, data = na.omit(egg)))
 ```
 
+<!-- BUG FIXME -->
+```{r, include = FALSE, eval = FALSE}
+kable(
+    aggregate(cbind(paras = opar/otot, emerg = oeme/otot) ~ H + P + I,
+              data = egg,
+              FUN = mean), digits = 3)
+```
+
 ****
 ## Sobreviência da Fêmea
 
@@ -109,37 +151,60 @@ sobreviveu. A variável `vivo` é o oposto da variável `mort`.
 egg$vivo <- 1 - egg$mort
 ftable(xtabs(vivo ~ I + P + H, data = egg))
 
-# Como Clorpirifós e Testemunha são controles (-) e (+), onde a
-# expectativa era nenhuma e total sobreviência, serão removidos da
-# análise.
-
+# Modelo saturado.
 m0 <- glm(vivo ~ (I + P + H)^3,
-          # data = subset(egg, !I %in% c("Test", "Clor", "Espi")),
           data = subset(egg),
           family = quasibinomial)
 anova(m0, test = "F")
 
+# Modelo reduzido.
 m1 <- update(m0, . ~ I * (P + H))
 anova(m1, test = "F")
 anova(m1, m0, test = "F")
 
 #-----------------------------------------------------------------------
-# Comparações entre hospedeiros dentro de inseticida x parasitóide.
+# Comparações múltiplas.
 
 lsm <- LSmatrix(m1, effect = c("I", "P", "H"))
 grid <- equallevels(attr(lsm, "grid"), egg)
+comp <- vector(mode = "list", length = 2)
 
+# Hospedeiros dentro de inseticida x parasitóide.
 L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
 L <- lapply(L, "rownames<-", levels(egg$H))
-
 cmp <- lapply(L, apmc, model = m1, focus = "H")
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
 pred <- cbind(as.data.frame(cmp), pred[, -1])
 names(pred)[1:2] <- names(grid)[1:2]
+names(pred)[ncol(pred)] <- "cldH"
 
+comp[[1]] <- pred
+
+# Inseticidas dentro de parasitóide e hospedeiro.
+L <- by(lsm, INDICES = with(grid, interaction(H, P)), FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(egg$I))
+cmp <- lapply(L, apmc, model = m1, focus = "I", test = "fdr")
+
+pred <- ldply(cmp)
+cmp <- ldply(strsplit(pred$.id, "\\."))
+pred <- cbind(as.data.frame(cmp), pred[, -1])
+# names(pred)[1:2] <- names(grid)[1:2]
+names(pred)[1:2] <- c("H", "P")
+names(pred)[ncol(pred)] <- "cldI"
+pred[, ncol(pred)] <- toupper(pred[, ncol(pred)])
+
+comp[[2]] <- pred
+str(comp)
+
+pred <- merge(comp[[1]],
+              comp[[2]],
+              by = intersect(names(comp[[1]]), names(comp[[2]])))
+
+#-----------------------------------------------------------------------
 # Passa para a escala de probabilidade.
+
 i <- c("fit", "lwr", "upr")
 pred[, i] <- sapply(pred[, i], m1$family$linkinv)
 
@@ -158,8 +223,15 @@ pred$I <- reorder(pred$I, pred$fit)
 
 # Legenda.
 key <- list(points = list(pch = c(1, 19)),
-            text = list(levels(egg_parasitoid$hosp)),
-            title = "Parasitoids", cex.title = 1.1)
+            text = list(levels(egg_parasitoid$hosp), font = 3),
+            title = "Hosts", cex.title = 1.1)
+
+pred$cld <- with(pred, paste(cldI, cldH, sep = ""))
+```
+```{r, fig.cap = cap}
+cap <-
+"Estimated probability of surviving at 24h for each inseticide on two parasiods and two hosts. Segment is a confidence interval for the probability of surviving. Parasitoids estimates followed by the same lower letters in a insetice and host combination are not different at 5%. Inseticides estimates followed by the same lower letters in a parasitoid and host combination are not different at 5%."
+cap <- fgn_("surv", cap)
 
 # Gráfico de segmentos.
 segplot(I ~ lwr + upr | P,
@@ -172,14 +244,31 @@ segplot(I ~ lwr + upr | P,
         groups = H,
         key = key,
         strip = strip.custom(
-            factor.levels = levels(egg_parasitoid$paras)),
+            factor.levels = levels(egg_parasitoid$paras),
+            par.strip.text = list(font = 3)),
         gap = 0.15,
+        cld = pred$cld,
         panel = panel.groups.segplot,
         pch = key$points$pch[as.integer(pred$H)]) +
-    layer(panel.text(y = centers[subscripts],
-                     x = as.integer(z)[subscripts] + gap(groups, gap),
-                     labels = pred$cld[subscripts],
-                     adj = -0.25 * c(1, 1)))
+    layer({
+        a <- cld[which.max(nchar(cld))]
+        l <- cld[subscripts]
+        x <- as.integer(z)[subscripts] + gap(groups[subscripts], gap)
+        y <- centers[subscripts]
+        # Usa símbolo unicode:
+        # http://www.alanwood.net/unicode/geometric_shapes.html
+        grid.text("\u25AE",
+                  x = unit(x, "native"),
+                  y = unit(y, "native"),
+                  vjust = -0.5,
+                  gp = gpar(col = "white")
+                  )
+        grid.text(l,
+                  x = unit(x, "native"),
+                  y = unit(y, "native"),
+                  vjust = -0.5,
+                  gp = gpar(col = "black", fontsize = 10))
+        })
 ```
 
 ****
@@ -187,25 +276,10 @@ segplot(I ~ lwr + upr | P,
 
 ```{r}
 #-----------------------------------------------------------------------
-
-ftable(xtabs(complete.cases(egg) ~ I + H + P, data = egg))
-
-# Remover Clorp e Spine pois tem informação inferior a metade com relação
-# aos demais.
-
-egg2 <- droplevels(subset(egg, !I %in% c("Clorp", "Spine")))
-str(egg2)
-```
-
-```{r}
-#-----------------------------------------------------------------------
 # Análise exploratória.
 
-ftable(xtabs(!is.na(opar) ~ I + P + H, data = egg2))
-# ftable(xtabs(opar/otot ~ I + P + H, data = egg2))
-
 useOuterStrips(xyplot(opar/otot ~ I | H + P,
-                      data = egg2,
+                      data = egg,
                       jitter.x = TRUE,
                       type = c("p", "a")))
 
@@ -213,7 +287,7 @@ useOuterStrips(xyplot(opar/otot ~ I | H + P,
 # Ajuste do modelo.
 
 m0 <- glm(cbind(opar, otot - opar) ~ I * P * H,
-          data = egg2,
+          data = egg,
           family = quasibinomial)
 
 par(mfrow = c(2, 2))
@@ -224,24 +298,50 @@ anova(m0, test = "F")
 # summary(m0)
 
 #-----------------------------------------------------------------------
-# Comparações entre hospedeiros dentro de inseticida x parasitóide.
+# Comparações múltiplas.
 
 lsm <- LSmatrix(m0, effect = c("I", "P", "H"))
-grid <- equallevels(attr(lsm, "grid"), egg2)
+grid <- equallevels(attr(lsm, "grid"), egg)
+comp <- vector(mode = "list", length = 2)
 
+# Hospedeiros dentro de inseticida x parasitóide.
 L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
 L <- lapply(L, "rownames<-", levels(egg$H))
-
 cmp <- lapply(L, apmc, model = m0, focus = "H")
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
 pred <- cbind(as.data.frame(cmp), pred[, -1])
 names(pred)[1:2] <- names(grid)[1:2]
+names(pred)[ncol(pred)] <- "cldH"
 
+comp[[1]] <- pred
+
+# Inseticidas dentro de parasitóide e hospedeiro.
+L <- by(lsm, INDICES = with(grid, interaction(H, P)), FUN = as.matrix)
+L <- lapply(L, "rownames<-", levels(egg$I))
+cmp <- lapply(L, apmc, model = m0, focus = "I", test = "fdr")
+
+pred <- ldply(cmp)
+cmp <- ldply(strsplit(pred$.id, "\\."))
+pred <- cbind(as.data.frame(cmp), pred[, -1])
+# names(pred)[1:2] <- names(grid)[1:2]
+names(pred)[1:2] <- c("H", "P")
+names(pred)[ncol(pred)] <- "cldI"
+pred[, ncol(pred)] <- toupper(pred[, ncol(pred)])
+
+comp[[2]] <- pred
+str(comp)
+
+pred <- merge(comp[[1]],
+              comp[[2]],
+              by = intersect(names(comp[[1]]), names(comp[[2]])))
+
+#-----------------------------------------------------------------------
 # Passa para a escala de probabilidade.
+
 i <- c("fit", "lwr", "upr")
-pred[, i] <- sapply(pred[, i], m0$family$linkinv)
+pred[, i] <- sapply(pred[, i], m1$family$linkinv)
 
 # Ordena da tabela.
 pred <- pred[with(pred, order(P, I, H)), ]
@@ -258,8 +358,25 @@ pred$I <- reorder(pred$I, pred$fit)
 
 # Legenda.
 key <- list(points = list(pch = c(1, 19)),
-            text = list(levels(egg_parasitoid$hosp)),
-            title = "Parasitoids", cex.title = 1.1)
+            text = list(levels(egg_parasitoid$hosp), font = 3),
+            title = "Hosts", cex.title = 1.1)
+
+pred$cld <- with(pred, paste(cldI, cldH, sep = ""))
+
+#-----------------------------------------------------------------------
+
+ab <- aggregate(cbind(paras = opar/otot) ~ I + H + P,
+                data = egg,
+                FUN = mean)
+
+kable(merge(pred, ab, by = intersect(names(pred), names(ab)))[, -c(5:9)])
+
+#-----------------------------------------------------------------------
+```
+```{r, fig.cap = cap}
+cap <-
+"Estimated proportion of of parasitated eggs for each inseticide on two parasiods and two hosts. Segment is a confidence interval for the probability of surviving. Parasitoids estimates followed by the same lower letters in a insetice and host combination are not different at 5%. Inseticides estimates followed by the same lower letters in a parasitoid and host combination are not different at 5%."
+cap <- fgn_("opar", cap)
 
 # Gráfico de segmentos.
 segplot(I ~ lwr + upr | P,
@@ -272,14 +389,36 @@ segplot(I ~ lwr + upr | P,
         groups = H,
         key = key,
         strip = strip.custom(
-            factor.levels = levels(egg_parasitoid$paras)),
+            factor.levels = levels(egg_parasitoid$paras),
+            par.strip.text = list(font = 3)),
         gap = 0.15,
+        cld = pred$cld,
         panel = panel.groups.segplot,
         pch = key$points$pch[as.integer(pred$H)]) +
-    layer(panel.text(y = centers[subscripts],
-                     x = as.integer(z)[subscripts] + gap(groups, gap),
-                     labels = pred$cld[subscripts],
-                     adj = -0.25 * c(1, 1)))
+    # layer(panel.text(y = centers[subscripts],
+    #                  x = as.integer(z)[subscripts] +
+    #                      gap(groups[subscripts], gap),
+    #                  labels = round(centers[subscripts], 3),
+    #                  pos = 1)) +
+    layer({
+        a <- cld[which.max(nchar(cld))]
+        l <- cld[subscripts]
+        x <- as.integer(z)[subscripts] + gap(groups[subscripts], gap)
+        y <- centers[subscripts]
+        # Usa símbolo unicode:
+        # http://www.alanwood.net/unicode/geometric_shapes.html
+        grid.text("\u25AE",
+                  x = unit(x, "native"),
+                  y = unit(y, "native"),
+                  vjust = -0.5,
+                  gp = gpar(col = "white")
+                  )
+        grid.text(l,
+                  x = unit(x, "native"),
+                  y = unit(y, "native"),
+                  vjust = -0.5,
+                  gp = gpar(col = "black", fontsize = 10))
+        })
 ```
 
 ****
@@ -289,11 +428,11 @@ segplot(I ~ lwr + upr | P,
 #-----------------------------------------------------------------------
 # Análise exploratória.
 
-ftable(xtabs(!is.na(oeme) ~ I + P + H, data = egg2))
-# ftable(xtabs(oeme/otot ~ I + P + H, data = egg2))
+ftable(xtabs(!is.na(oeme) ~ I + P + H, data = egg))
 
+# ATTENTION: Com os 7 inseticidas dá cela perdida.
 useOuterStrips(xyplot(oeme/otot ~ I | H + P,
-                      data = egg2[!is.na(egg2$oeme), ],
+                      data = egg[!is.na(egg$oeme), ],
                       jitter.x = TRUE,
                       type = c("p", "a")))
 
@@ -301,7 +440,7 @@ useOuterStrips(xyplot(oeme/otot ~ I | H + P,
 # Ajuste do modelo.
 
 m0 <- glm(cbind(oeme, otot - oeme) ~ I * P * H,
-          data = egg2,
+          data = egg,
           family = quasibinomial)
 
 par(mfrow = c(2, 2))
@@ -310,21 +449,72 @@ layout(1)
 
 anova(m0, test = "F")
 
+# Modelo declarado com a matrix do modelo, apenas os efeitos estimáveis.
+X <- model.matrix(formula(m0)[-2], data = egg)
+b <- coef(m0)
+X <- X[, !is.na(b)]
+m0 <- update(m0, . ~ 0 + X)
+
 #-----------------------------------------------------------------------
 # Comparações entre hospedeiros dentro de inseticida x parasitóide.
 
-lsm <- LSmatrix(m0, effect = c("I", "P", "H"))
-grid <- equallevels(attr(lsm, "grid"), egg2)
+comp <- vector(mode = "list", length = 2)
 
+# Declarar um modelo não deficiente aqui apenas para pegar a matriz.
+lsm <- LSmatrix(lm(mort ~ I * P * H, data = egg),
+                effect = c("I", "P", "H"))
+grid <- equallevels(attr(lsm, "grid"), egg)
+
+# Celas que serão mantidas pois são estimaveis.
+keep <- xtabs(!is.na(oeme) ~ interaction(I, P, H), data = egg) > 0
+i <- with(grid, interaction(I, P, H) %in% names(keep[keep]))
+
+grid <- grid[i, ]
+lsm <- lsm[i, ]
+
+# Deixa apenas as colunas de efeitos estimados.
+lsm <- lsm[, !is.na(b)]
+
+# Fazer as comparações apenas onde é possível.
+# Hospedeiros dentro de inseticida x parasitóide.
+rownames(lsm) <- grid$H
 L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
-L <- lapply(L, "rownames<-", levels(egg$H))
+i <- sapply(L, is.null)
+L <- L[!i]
 
-cmp <- lapply(L, apmc, model = m0, focus = "H")
+cmp <- lapply(L, apmc2, model = m0, focus = "H")
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
 pred <- cbind(as.data.frame(cmp), pred[, -1])
-names(pred)[1:2] <- names(grid)[1:2]
+names(pred)[1:2] <- c("I", "P")
+names(pred)[ncol(pred)] <- "cldH"
+
+comp[[1]] <- pred
+
+# Fazer as comparações apenas onde é possível.
+# Inseticidas dentro de parasitóide e hospedeiro.
+rownames(lsm) <- grid$I
+L <- by(lsm, INDICES = with(grid, interaction(H, P)), FUN = as.matrix)
+
+cmp <- lapply(L, apmc2, model = m0, focus = "I", test = "fdr")
+
+pred <- ldply(cmp)
+cmp <- ldply(strsplit(pred$.id, "\\."))
+pred <- cbind(as.data.frame(cmp), pred[, -1])
+names(pred)[1:2] <- c("H", "P")
+names(pred)[ncol(pred)] <- "cldI"
+pred[, ncol(pred)] <- toupper(pred[, ncol(pred)])
+
+comp[[2]] <- pred
+str(comp)
+
+pred <- merge(comp[[1]],
+              comp[[2]],
+              by = intersect(names(comp[[1]]), names(comp[[2]])))
+pred$cld <- with(pred, paste(cldI, cldH, sep = ""))
+
+#-----------------------------------------------------------------------
 
 # Passa para a escala de probabilidade.
 i <- c("fit", "lwr", "upr")
@@ -343,10 +533,25 @@ if (any(i)) {
 # Reordena os níveis pela probalidade de sobreviência.
 pred$I <- reorder(pred$I, pred$fit)
 
+ftable(xtabs(~I + P + H, data = pred))
+
 # Legenda.
 key <- list(points = list(pch = c(1, 19)),
-            text = list(levels(egg_parasitoid$hosp)),
-            title = "Parasitoids", cex.title = 1.1)
+            text = list(levels(egg_parasitoid$hosp), font = 3),
+            title = "Hosts", cex.title = 1.1)
+
+#-----------------------------------------------------------------------
+
+ab <- aggregate(cbind(emerg = oeme/otot) ~ I + H + P,
+                data = egg,
+                FUN = mean)
+
+kable(merge(pred, ab, by = intersect(names(pred), names(ab)))[, -c(5:9)])
+```
+```{r, fig.cap = cap}
+cap <-
+"Estimated proportion of egg emergency for each inseticide on two parasiods and two hosts. Segment is a confidence interval for the probability of surviving. Parasitoids estimates followed by the same lower letters in a insetice and host combination are not different at 5%. Inseticides estimates followed by the same lower letters in a parasitoid and host combination are not different at 5%."
+cap <- fgn_("oeme", cap)
 
 # Gráfico de segmentos.
 segplot(I ~ lwr + upr | P,
@@ -359,14 +564,36 @@ segplot(I ~ lwr + upr | P,
         groups = H,
         key = key,
         strip = strip.custom(
-            factor.levels = levels(egg_parasitoid$paras)),
+            factor.levels = levels(egg_parasitoid$paras),
+            par.strip.text = list(font = 3)),
         gap = 0.15,
+        cld = pred$cld,
         panel = panel.groups.segplot,
         pch = key$points$pch[as.integer(pred$H)]) +
-    layer(panel.text(y = centers[subscripts],
-                     x = as.integer(z)[subscripts] + gap(groups, gap),
-                     labels = pred$cld[subscripts],
-                     adj = -0.25 * c(1, 1)))
+    # layer(panel.text(y = centers[subscripts],
+    #                  x = as.integer(z)[subscripts] +
+    #                      gap(groups[subscripts], gap),
+    #                  labels = round(centers[subscripts], 3),
+    #                  pos = 1)) +
+    layer({
+        a <- cld[which.max(nchar(cld))]
+        l <- cld[subscripts]
+        x <- as.integer(z)[subscripts] + gap(groups[subscripts], gap)
+        y <- centers[subscripts]
+        # Usa símbolo unicode:
+        # http://www.alanwood.net/unicode/geometric_shapes.html
+        grid.text("\u25AE",
+                  x = unit(x, "native"),
+                  y = unit(y, "native"),
+                  vjust = -0.5,
+                  gp = gpar(col = "white")
+                  )
+        grid.text(l,
+                  x = unit(x, "native"),
+                  y = unit(y, "native"),
+                  vjust = -0.5,
+                  gp = gpar(col = "black", fontsize = 10))
+        })
 ```
 
 ****
@@ -383,7 +610,7 @@ informação suficiente para ser analisada.
 # Análise exploratória.
 
 useOuterStrips(xyplot(femea + macho ~ I | H + P,
-                      data = egg2[!is.na(egg2$macho + egg2$femea), ],
+                      data = egg[!is.na(egg$macho + egg$femea), ],
                       jitter.x = TRUE,
                       auto.key = TRUE,
                       type = c("p", "a")))
@@ -392,7 +619,7 @@ useOuterStrips(xyplot(femea + macho ~ I | H + P,
 # Ajuste do modelo.
 
 m0 <- glm(cbind(femea, macho) ~ I * P * H,
-          data = egg2,
+          data = egg,
           family = quasibinomial)
 
 par(mfrow = c(2, 2))
@@ -403,7 +630,7 @@ anova(m0, test = "F")
 # summary(m0)
 
 m1 <- glm(cbind(femea, macho) ~ P * H,
-          data = egg2,
+          data = egg,
           family = quasibinomial)
 
 par(mfrow = c(2, 2))
@@ -418,10 +645,10 @@ anova(m1, test = "F")
 # Comparações entre hospedeiros dentro de inseticida x parasitóide.
 
 lsm <- LSmatrix(m1, effect = c("P", "H"))
-grid <- equallevels(attr(lsm, "grid"), egg2)
+grid <- equallevels(attr(lsm, "grid"), egg)
 
 L <- by(lsm, INDICES = with(grid, P), FUN = as.matrix)
-L <- lapply(L, "rownames<-", levels(egg2$H))
+L <- lapply(L, "rownames<-", levels(egg$H))
 
 cmp <- lapply(L, apmc, model = m1, focus = "H")
 
@@ -429,7 +656,7 @@ pred <- ldply(cmp)
 # cmp <- ldply(strsplit(pred$.id, "\\."))
 # pred <- cbind(as.data.frame(cmp), pred[, -1])
 names(pred)[1] <- names(grid)[1]
-pred <- equallevels(pred, egg2)
+pred <- equallevels(pred, egg)
 
 # Passa para a escala de probabilidade.
 i <- c("fit", "lwr", "upr")
@@ -447,28 +674,51 @@ if (any(i)) {
 
 # Legenda.
 key <- list(points = list(pch = c(1, 19)),
-            text = list(levels(egg_parasitoid$hosp)),
-            title = "Parasitoids", cex.title = 1.1)
+            text = list(levels(egg_parasitoid$hosp), font = 3),
+            title = "Hosts", cex.title = 1.1)
+```
+```{r, fig.cap = cap}
+cap <-
+"Estimated proportion of female parasitoids for each inseticide on two parasiods and two hosts. Segment is a confidence interval for the probability of surviving. Parasitoids estimates followed by the same lower letters in a insetice and host combination are not different at 5%. Inseticides estimates followed by the same lower letters in a parasitoid and host combination are not different at 5%."
+cap <- fgn_("sexratio", cap)
 
 # Gráfico de segmentos.
 segplot(P ~ lwr + upr,
         centers = fit,
         data = pred,
-        xlab = "Host species",
+        xlab = "Parasitoids species",
         ylab = "Proportion of female parasitoids",
         draw = FALSE,
         horizontal = FALSE,
         groups = H,
         key = key,
-        strip = strip.custom(
-            factor.levels = levels(egg_parasitoid$paras)),
         gap = 0.15,
+        cld = pred$cld,
         panel = panel.groups.segplot,
         pch = key$points$pch[as.integer(pred$H)]) +
-    layer(panel.text(y = centers[subscripts],
-                     x = as.integer(z)[subscripts] + gap(groups, gap),
-                     labels = pred$cld[subscripts],
-                     adj = -0.25 * c(1, 1)))
+    # layer(panel.text(y = centers[subscripts],
+    #                  x = as.integer(z)[subscripts] + gap(groups, gap),
+    #                  labels = pred$cld[subscripts],
+    #                  adj = -0.25 * c(1, 1)))
+    layer({
+        a <- cld[which.max(nchar(cld))]
+        l <- cld[subscripts]
+        x <- as.integer(z)[subscripts] + gap(groups[subscripts], gap)
+        y <- centers[subscripts]
+        # Usa símbolo unicode:
+        # http://www.alanwood.net/unicode/geometric_shapes.html
+        grid.text("\u25AE",
+                  x = unit(x, "native"),
+                  y = unit(y, "native"),
+                  vjust = -0.5,
+                  gp = gpar(col = "white")
+                  )
+        grid.text(l,
+                  x = unit(x, "native"),
+                  y = unit(y, "native"),
+                  vjust = -0.5,
+                  gp = gpar(col = "black", fontsize = 10))
+        })
 ```
 
 ****
@@ -478,10 +728,9 @@ segplot(P ~ lwr + upr,
 #-----------------------------------------------------------------------
 # Análise exploratória.
 
-egg2$pem <- with(egg2, femea + macho)
-
+egg$pem <- with(egg, femea + macho)
 useOuterStrips(xyplot(pem + pne ~ I | H + P,
-                      data = egg2[!is.na(egg2$pem + egg2$pne), ],
+                      data = egg[!is.na(egg$pem + egg$pne), ],
                       jitter.x = TRUE,
                       auto.key = TRUE,
                       type = c("p", "a")))
@@ -490,7 +739,7 @@ useOuterStrips(xyplot(pem + pne ~ I | H + P,
 # Ajuste do modelo.
 
 m0 <- glm(cbind(pem, pne) ~ I * P * H,
-          data = egg2,
+          data = egg,
           family = quasibinomial)
 
 par(mfrow = c(2, 2))
@@ -500,21 +749,72 @@ layout(1)
 anova(m0, test = "F")
 # summary(m0)
 
+# Modelo declarado com a matrix do modelo, apenas os efeitos estimáveis.
+X <- model.matrix(formula(m0)[-2], data = egg)
+b <- coef(m0)
+X <- X[, !is.na(b)]
+m0 <- update(m0, . ~ 0 + X)
+
 #-----------------------------------------------------------------------
 # Comparações entre hospedeiros dentro de inseticida x parasitóide.
 
-lsm <- LSmatrix(m0, effect = c("I", "P", "H"))
-grid <- equallevels(attr(lsm, "grid"), egg2)
+comp <- vector(mode = "list", length = 2)
 
+# Declarar um modelo não deficiente aqui apenas para pegar a matriz.
+lsm <- LSmatrix(lm(mort ~ I * P * H, data = egg),
+                effect = c("I", "P", "H"))
+grid <- equallevels(attr(lsm, "grid"), egg)
+
+# Celas que serão mantidas pois são estimaveis.
+keep <- xtabs(!is.na(oeme) ~ interaction(I, P, H), data = egg) > 0
+i <- with(grid, interaction(I, P, H) %in% names(keep[keep]))
+
+grid <- grid[i, ]
+lsm <- lsm[i, ]
+
+# Deixa apenas as colunas de efeitos estimados.
+lsm <- lsm[, !is.na(b)]
+
+# Fazer as comparações apenas onde é possível.
+# Hospedeiros dentro de inseticida x parasitóide.
+rownames(lsm) <- grid$H
 L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
-L <- lapply(L, "rownames<-", levels(egg2$H))
+i <- sapply(L, is.null)
+L <- L[!i]
 
-cmp <- lapply(L, apmc, model = m0, focus = "H")
+cmp <- lapply(L, apmc2, model = m0, focus = "H")
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
 pred <- cbind(as.data.frame(cmp), pred[, -1])
-names(pred)[1:2] <- names(grid)[1:2]
+names(pred)[1:2] <- c("I", "P")
+names(pred)[ncol(pred)] <- "cldH"
+
+comp[[1]] <- pred
+
+# Fazer as comparações apenas onde é possível.
+# Inseticidas dentro de parasitóide e hospedeiro.
+rownames(lsm) <- grid$I
+L <- by(lsm, INDICES = with(grid, interaction(H, P)), FUN = as.matrix)
+
+cmp <- lapply(L, apmc2, model = m0, focus = "I", test = "fdr")
+
+pred <- ldply(cmp)
+cmp <- ldply(strsplit(pred$.id, "\\."))
+pred <- cbind(as.data.frame(cmp), pred[, -1])
+names(pred)[1:2] <- c("H", "P")
+names(pred)[ncol(pred)] <- "cldI"
+pred[, ncol(pred)] <- toupper(pred[, ncol(pred)])
+
+comp[[2]] <- pred
+str(comp)
+
+pred <- merge(comp[[1]],
+              comp[[2]],
+              by = intersect(names(comp[[1]]), names(comp[[2]])))
+pred$cld <- with(pred, paste(cldI, cldH, sep = ""))
+
+#-----------------------------------------------------------------------
 
 # Passa para a escala de probabilidade.
 i <- c("fit", "lwr", "upr")
@@ -535,28 +835,55 @@ pred$I <- reorder(pred$I, pred$fit)
 
 # Legenda.
 key <- list(points = list(pch = c(1, 19)),
-            text = list(levels(egg_parasitoid$hosp)),
-            title = "Parasitoids", cex.title = 1.1)
+            text = list(levels(egg_parasitoid$hosp), font = 3),
+            title = "Hosts", cex.title = 1.1)
+```
+```{r, fig.cap = cap}
+cap <-
+"Estimated parasitoid emergency proportion for each inseticide on two parasiods and two hosts. Segment is a confidence interval for the probability of surviving. Parasitoids estimates followed by the same lower letters in a insetice and host combination are not different at 5%. Inseticides estimates followed by the same lower letters in a parasitoid and host combination are not different at 5%."
+cap <- fgn_("pemer", cap)
 
 # Gráfico de segmentos.
 segplot(I ~ lwr + upr | P,
         centers = fit,
         data = pred,
         xlab = "Insticides",
-        ylab = "Probability of surviving a 24h period",
+        ylab = "Proportion of parasitoid emergency",
         draw = FALSE,
         horizontal = FALSE,
         groups = H,
         key = key,
         strip = strip.custom(
-            factor.levels = levels(egg_parasitoid$paras)),
+            factor.levels = levels(egg_parasitoid$paras),
+            par.strip.text = list(font = 3)),
         gap = 0.15,
+        cld = pred$cld,
         panel = panel.groups.segplot,
         pch = key$points$pch[as.integer(pred$H)]) +
-    layer(panel.text(y = centers[subscripts],
-                     x = as.integer(z)[subscripts] + gap(groups, gap),
-                     labels = pred$cld[subscripts],
-                     adj = -0.25 * c(1, 1)))
+    # layer(panel.text(y = centers[subscripts],
+    #                  x = as.integer(z)[subscripts] +
+    #                        gap(groups[subscripts], gap),
+    #                  labels = cld[subscripts],
+    #                  adj = -0.25 * c(1, 1)))
+    layer({
+        a <- cld[which.max(nchar(cld))]
+        l <- cld[subscripts]
+        x <- as.integer(z)[subscripts] + gap(groups[subscripts], gap)
+        y <- centers[subscripts]
+        # Usa símbolo unicode:
+        # http://www.alanwood.net/unicode/geometric_shapes.html
+        grid.text("\u25AE",
+                  x = unit(x, "native"),
+                  y = unit(y, "native"),
+                  vjust = -0.5,
+                  gp = gpar(col = "white")
+                  )
+        grid.text(l,
+                  x = unit(x, "native"),
+                  y = unit(y, "native"),
+                  vjust = -0.5,
+                  gp = gpar(col = "black", fontsize = 10))
+        })
 ```
 
 ****
@@ -566,10 +893,10 @@ segplot(I ~ lwr + upr | P,
 #-----------------------------------------------------------------------
 # Análise exploratória.
 
-egg2$ptot <- with(egg2, femea + macho + pne)
+egg$ptot <- with(egg, femea + macho + pne)
 
 useOuterStrips(xyplot(ptot ~ I | H + P,
-                      data = egg2[!is.na(egg2$ptot), ],
+                      data = egg[!is.na(egg$ptot), ],
                       jitter.x = TRUE,
                       auto.key = TRUE,
                       type = c("p", "a")))
@@ -578,7 +905,7 @@ useOuterStrips(xyplot(ptot ~ I | H + P,
 # Ajuste do modelo.
 
 m0 <- glm(ptot ~ I * P * H,
-          data = egg2,
+          data = egg,
           family = quasipoisson)
 
 par(mfrow = c(2, 2))
@@ -588,21 +915,72 @@ layout(1)
 anova(m0, test = "F")
 # summary(m0)
 
+# Modelo declarado com a matrix do modelo, apenas os efeitos estimáveis.
+X <- model.matrix(formula(m0)[-2], data = egg)
+b <- coef(m0)
+X <- X[, !is.na(b)]
+m0 <- update(m0, . ~ 0 + X)
+
 #-----------------------------------------------------------------------
 # Comparações entre hospedeiros dentro de inseticida x parasitóide.
 
-lsm <- LSmatrix(m0, effect = c("I", "P", "H"))
-grid <- equallevels(attr(lsm, "grid"), egg2)
+comp <- vector(mode = "list", length = 2)
 
+# Declarar um modelo não deficiente aqui apenas para pegar a matriz.
+lsm <- LSmatrix(lm(mort ~ I * P * H, data = egg),
+                effect = c("I", "P", "H"))
+grid <- equallevels(attr(lsm, "grid"), egg)
+
+# Celas que serão mantidas pois são estimaveis.
+keep <- xtabs(!is.na(oeme) ~ interaction(I, P, H), data = egg) > 0
+i <- with(grid, interaction(I, P, H) %in% names(keep[keep]))
+
+grid <- grid[i, ]
+lsm <- lsm[i, ]
+
+# Deixa apenas as colunas de efeitos estimados.
+lsm <- lsm[, !is.na(b)]
+
+# Fazer as comparações apenas onde é possível.
+# Hospedeiros dentro de inseticida x parasitóide.
+rownames(lsm) <- grid$H
 L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
-L <- lapply(L, "rownames<-", levels(egg2$H))
+i <- sapply(L, is.null)
+L <- L[!i]
 
-cmp <- lapply(L, apmc, model = m0, focus = "H")
+cmp <- lapply(L, apmc2, model = m0, focus = "H")
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
 pred <- cbind(as.data.frame(cmp), pred[, -1])
-names(pred)[1:2] <- names(grid)[1:2]
+names(pred)[1:2] <- c("I", "P")
+names(pred)[ncol(pred)] <- "cldH"
+
+comp[[1]] <- pred
+
+# Fazer as comparações apenas onde é possível.
+# Inseticidas dentro de parasitóide e hospedeiro.
+rownames(lsm) <- grid$I
+L <- by(lsm, INDICES = with(grid, interaction(H, P)), FUN = as.matrix)
+
+cmp <- lapply(L, apmc2, model = m0, focus = "I", test = "fdr")
+
+pred <- ldply(cmp)
+cmp <- ldply(strsplit(pred$.id, "\\."))
+pred <- cbind(as.data.frame(cmp), pred[, -1])
+names(pred)[1:2] <- c("H", "P")
+names(pred)[ncol(pred)] <- "cldI"
+pred[, ncol(pred)] <- toupper(pred[, ncol(pred)])
+
+comp[[2]] <- pred
+str(comp)
+
+pred <- merge(comp[[1]],
+              comp[[2]],
+              by = intersect(names(comp[[1]]), names(comp[[2]])))
+pred$cld <- with(pred, paste(cldI, cldH, sep = ""))
+
+#-----------------------------------------------------------------------
 
 # Passa para a escala de probabilidade.
 i <- c("fit", "lwr", "upr")
@@ -616,8 +994,13 @@ pred$I <- reorder(pred$I, pred$fit)
 
 # Legenda.
 key <- list(points = list(pch = c(1, 19)),
-            text = list(levels(egg_parasitoid$hosp)),
-            title = "Parasitoids", cex.title = 1.1)
+            text = list(levels(egg_parasitoid$hosp), font = 3),
+            title = "Hosts", cex.title = 1.1)
+```
+```{r, fig.cap = cap}
+cap <-
+"Estimated total number of parasitoids for each inseticide on two parasiods and two hosts. Segment is a confidence interval for the probability of surviving. Parasitoids estimates followed by the same lower letters in a insetice and host combination are not different at 5%. Inseticides estimates followed by the same lower letters in a parasitoid and host combination are not different at 5%."
+cap <- fgn_("tot", cap)
 
 # Gráfico de segmentos.
 segplot(I ~ lwr + upr | P,
@@ -630,14 +1013,31 @@ segplot(I ~ lwr + upr | P,
         groups = H,
         key = key,
         strip = strip.custom(
-            factor.levels = levels(egg_parasitoid$paras)),
+            factor.levels = levels(egg_parasitoid$paras),
+            par.strip.text = list(font = 3)),
         gap = 0.15,
+        cld = pred$cld,
         panel = panel.groups.segplot,
         pch = key$points$pch[as.integer(pred$H)]) +
-    layer(panel.text(y = centers[subscripts],
-                     x = as.integer(z)[subscripts] + gap(groups, gap),
-                     labels = pred$cld[subscripts],
-                     adj = -0.25 * c(1, 1)))
+    layer({
+        a <- cld[which.max(nchar(cld))]
+        l <- cld[subscripts]
+        x <- as.integer(z)[subscripts] + gap(groups[subscripts], gap)
+        y <- centers[subscripts]
+        # Usa símbolo unicode:
+        # http://www.alanwood.net/unicode/geometric_shapes.html
+        grid.text("\u25AE",
+                  x = unit(x, "native"),
+                  y = unit(y, "native"),
+                  vjust = -0.5,
+                  gp = gpar(col = "white")
+                  )
+        grid.text(l,
+                  x = unit(x, "native"),
+                  y = unit(y, "native"),
+                  vjust = -0.5,
+                  gp = gpar(col = "black", fontsize = 10))
+        })
 ```
 
 ****
