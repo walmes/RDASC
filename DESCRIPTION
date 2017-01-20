@@ -30,6 +30,7 @@ Suggests:
     reshape2,
     knitr,
     rmarkdown,
+    captioner,
     mgcv,
     nlme,
     nls2,
