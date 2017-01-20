@@ -26,39 +26,6 @@ library(latticeExtra)
 library(plyr)
 library(doBy)
 library(multcomp)
-
-# Versão da função apmc() para modelos que usam a matriz do modelo ao
-# invés da formula.
-apmc2 <- function(X,
-                  model,
-                  focus,
-                  test = "single-step",
-                  level = 0.05) {
-    if (is.null(rownames(X))) {
-        stop("The X matrix must have row names.")
-    }
-    Xc <- apc(X)
-    g <- multcomp::glht(model, linfct = X)
-    ci <- confint(g, level = 1 - level,
-                  calpha = multcomp::univariate_calpha())$confint
-    ci <- as.data.frame(ci)
-    names(ci) <- tolower(names(ci))
-    names(ci)[1] <- "fit"
-    h <- summary(multcomp::glht(model, linfct = Xc),
-                 test = adjusted(type = test))
-    h$type <- "Tukey"
-    h$focus <- focus
-    # ci$cld <- multcomp::cld(h,
-    #                         level = level,
-    #                         decreasing = TRUE)$mcletters$Letters
-    ci$cld <- cld2(h,
-                   level = level)$mcletters$Letters
-    ci$cld <- ordered_cld(ci$cld, ci$fit)
-    ci <- cbind(rownames(ci), ci)
-    names(ci)[1] <- focus
-    rownames(ci) <- NULL
-    return(ci)
-}
 ```
 ```{r, eval=FALSE}
 library(wzCoop)
@@ -164,7 +131,7 @@ comp <- vector(mode = "list", length = 2)
 # Hospedeiros dentro de inseticida x parasitóide.
 L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
 L <- lapply(L, "rownames<-", levels(egg$H))
-cmp <- lapply(L, apmc, model = m1, focus = "H")
+cmp <- lapply(L, apmc, model = m1, focus = "H", cld2 = TRUE)
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
@@ -177,7 +144,8 @@ comp[[1]] <- pred
 # Inseticidas dentro de parasitóide e hospedeiro.
 L <- by(lsm, INDICES = with(grid, interaction(H, P)), FUN = as.matrix)
 L <- lapply(L, "rownames<-", levels(egg$I))
-cmp <- lapply(L, apmc, model = m1, focus = "I", test = "fdr")
+cmp <- lapply(L, apmc, model = m1, focus = "I", test = "fdr",
+              cld2 = TRUE)
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
@@ -303,7 +271,7 @@ comp <- vector(mode = "list", length = 2)
 # Hospedeiros dentro de inseticida x parasitóide.
 L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
 L <- lapply(L, "rownames<-", levels(egg$H))
-cmp <- lapply(L, apmc2, model = m0, focus = "H")
+cmp <- lapply(L, apmc, model = m0, focus = "H", cld2 = TRUE)
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
@@ -316,7 +284,8 @@ comp[[1]] <- pred
 # Inseticidas dentro de parasitóide e hospedeiro.
 L <- by(lsm, INDICES = with(grid, interaction(H, P)), FUN = as.matrix)
 L <- lapply(L, "rownames<-", levels(egg$I))
-cmp <- lapply(L, apmc2, model = m0, focus = "I", test = "fdr")
+cmp <- lapply(L, apmc, model = m0, focus = "I", test = "fdr",
+              cld2 = TRUE)
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
@@ -477,7 +446,7 @@ L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
 i <- sapply(L, is.null)
 L <- L[!i]
 
-cmp <- lapply(L, apmc2, model = m0, focus = "H")
+cmp <- lapply(L, apmc, model = m0, focus = "H", cld2 = TRUE)
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
@@ -492,7 +461,8 @@ comp[[1]] <- pred
 rownames(lsm) <- grid$I
 L <- by(lsm, INDICES = with(grid, interaction(H, P)), FUN = as.matrix)
 
-cmp <- lapply(L, apmc2, model = m0, focus = "I", test = "fdr")
+cmp <- lapply(L, apmc, model = m0, focus = "I", test = "fdr",
+              cld2 = TRUE)
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
@@ -565,11 +535,6 @@ segplot(I ~ lwr + upr | P,
         cld = pred$cld,
         panel = panel.groups.segplot,
         pch = key$points$pch[as.integer(pred$H)]) +
-    # layer(panel.text(y = centers[subscripts],
-    #                  x = as.integer(z)[subscripts] +
-    #                      centfac(groups[subscripts], gap),
-    #                  labels = round(centers[subscripts], 3),
-    #                  pos = 1)) +
     layer({
         a <- cld[which.max(nchar(cld))]
         l <- cld[subscripts]
@@ -645,7 +610,7 @@ grid <- equallevels(attr(lsm, "grid"), egg)
 L <- by(lsm, INDICES = with(grid, P), FUN = as.matrix)
 L <- lapply(L, "rownames<-", levels(egg$H))
 
-cmp <- lapply(L, apmc, model = m1, focus = "H")
+cmp <- lapply(L, apmc, model = m1, focus = "H", cld2 = TRUE)
 
 pred <- ldply(cmp)
 # cmp <- ldply(strsplit(pred$.id, "\\."))
@@ -691,10 +656,6 @@ segplot(P ~ lwr + upr,
         cld = pred$cld,
         panel = panel.groups.segplot,
         pch = key$points$pch[as.integer(pred$H)]) +
-    # layer(panel.text(y = centers[subscripts],
-    #                  x = as.integer(z)[subscripts] + centfac(groups, gap),
-    #                  labels = pred$cld[subscripts],
-    #                  adj = -0.25 * c(1, 1)))
     layer({
         a <- cld[which.max(nchar(cld))]
         l <- cld[subscripts]
@@ -777,7 +738,7 @@ L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
 i <- sapply(L, is.null)
 L <- L[!i]
 
-cmp <- lapply(L, apmc2, model = m0, focus = "H")
+cmp <- lapply(L, apmc, model = m0, focus = "H", cld2 = TRUE)
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
@@ -792,7 +753,8 @@ comp[[1]] <- pred
 rownames(lsm) <- grid$I
 L <- by(lsm, INDICES = with(grid, interaction(H, P)), FUN = as.matrix)
 
-cmp <- lapply(L, apmc2, model = m0, focus = "I", test = "fdr")
+cmp <- lapply(L, apmc, model = m0, focus = "I", test = "fdr",
+              cld2 = TRUE)
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
@@ -855,11 +817,6 @@ segplot(I ~ lwr + upr | P,
         cld = pred$cld,
         panel = panel.groups.segplot,
         pch = key$points$pch[as.integer(pred$H)]) +
-    # layer(panel.text(y = centers[subscripts],
-    #                  x = as.integer(z)[subscripts] +
-    #                        centfac(groups[subscripts], gap),
-    #                  labels = cld[subscripts],
-    #                  adj = -0.25 * c(1, 1)))
     layer({
         a <- cld[which.max(nchar(cld))]
         l <- cld[subscripts]
@@ -943,7 +900,7 @@ L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
 i <- sapply(L, is.null)
 L <- L[!i]
 
-cmp <- lapply(L, apmc2, model = m0, focus = "H")
+cmp <- lapply(L, apmc, model = m0, focus = "H", cld2 = TRUE)
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
@@ -958,7 +915,8 @@ comp[[1]] <- pred
 rownames(lsm) <- grid$I
 L <- by(lsm, INDICES = with(grid, interaction(H, P)), FUN = as.matrix)
 
-cmp <- lapply(L, apmc2, model = m0, focus = "I", test = "fdr")
+cmp <- lapply(L, apmc, model = m0, focus = "I", test = "fdr",
+              cld2 = TRUE)
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
