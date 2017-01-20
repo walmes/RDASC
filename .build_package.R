@@ -21,6 +21,10 @@ install_deps(dependencies = TRUE,
 
 session_info()
 
+inpack <- installed.packages()
+rownames(inpack) <- NULL
+print(inpack[, c("Package", "Version")], quote = FALSE)
+
 #-----------------------------------------------------------------------
 # Load package objects.
 
