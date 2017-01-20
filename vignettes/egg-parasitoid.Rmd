@@ -27,14 +27,6 @@ library(plyr)
 library(doBy)
 library(multcomp)
 
-gap <- function(groups, gap = NULL) {
-    if (is.null(gap)) {
-        gap <- 0.5/nlevels(groups)
-    }
-    d <- 2 * ((as.numeric(groups) - 1)/(nlevels(groups) - 1)) - 1
-    return(gap * d)
-}
-
 # Versão da função apmc() para modelos que usam a matriz do modelo ao
 # invés da formula.
 apmc2 <- function(X,
@@ -233,11 +225,14 @@ cap <-
 "Estimated probability of surviving at 24h for each inseticide on two parasiods and two hosts. Segment is a confidence interval for the probability of surviving. Parasitoids estimates followed by the same lower letters in a insetice and host combination are not different at 5%. Inseticides estimates followed by the same lower letters in a parasitoid and host combination are not different at 5%."
 cap <- fgn_("surv", cap)
 
+pred$vjust <- -0.5
+pred$vjust[pred$cld == "ABa"] <- 1.5
+
 # Gráfico de segmentos.
 segplot(I ~ lwr + upr | P,
         centers = fit,
         data = pred,
-        xlab = "Insticides",
+        xlab = "Insecticides",
         ylab = "Probability of surviving a 24h period",
         draw = FALSE,
         horizontal = FALSE,
@@ -253,20 +248,21 @@ segplot(I ~ lwr + upr | P,
     layer({
         a <- cld[which.max(nchar(cld))]
         l <- cld[subscripts]
-        x <- as.integer(z)[subscripts] + gap(groups[subscripts], gap)
+        v <- pred$vjust[subscripts]
+        x <- as.integer(z)[subscripts] + centfac(groups[subscripts], gap)
         y <- centers[subscripts]
         # Usa símbolo unicode:
         # http://www.alanwood.net/unicode/geometric_shapes.html
         grid.text("\u25AE",
                   x = unit(x, "native"),
                   y = unit(y, "native"),
-                  vjust = -0.5,
+                  vjust = v,
                   gp = gpar(col = "white")
                   )
         grid.text(l,
                   x = unit(x, "native"),
                   y = unit(y, "native"),
-                  vjust = -0.5,
+                  vjust = v,
                   gp = gpar(col = "black", fontsize = 10))
         })
 ```
@@ -307,7 +303,7 @@ comp <- vector(mode = "list", length = 2)
 # Hospedeiros dentro de inseticida x parasitóide.
 L <- by(lsm, INDICES = with(grid, interaction(I, P)), FUN = as.matrix)
 L <- lapply(L, "rownames<-", levels(egg$H))
-cmp <- lapply(L, apmc, model = m0, focus = "H")
+cmp <- lapply(L, apmc2, model = m0, focus = "H")
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
@@ -320,7 +316,7 @@ comp[[1]] <- pred
 # Inseticidas dentro de parasitóide e hospedeiro.
 L <- by(lsm, INDICES = with(grid, interaction(H, P)), FUN = as.matrix)
 L <- lapply(L, "rownames<-", levels(egg$I))
-cmp <- lapply(L, apmc, model = m0, focus = "I", test = "fdr")
+cmp <- lapply(L, apmc2, model = m0, focus = "I", test = "fdr")
 
 pred <- ldply(cmp)
 cmp <- ldply(strsplit(pred$.id, "\\."))
@@ -378,11 +374,14 @@ cap <-
 "Estimated proportion of of parasitated eggs for each inseticide on two parasiods and two hosts. Segment is a confidence interval for the probability of surviving. Parasitoids estimates followed by the same lower letters in a insetice and host combination are not different at 5%. Inseticides estimates followed by the same lower letters in a parasitoid and host combination are not different at 5%."
 cap <- fgn_("opar", cap)
 
+pred$vjust <- -0.5
+pred$vjust[pred$cld == "ABCDa"] <- 1.5
+
 # Gráfico de segmentos.
 segplot(I ~ lwr + upr | P,
         centers = fit,
         data = pred,
-        xlab = "Insticides",
+        xlab = "Insecticides",
         ylab = "Proportion of parasited eggs",
         draw = FALSE,
         horizontal = FALSE,
@@ -395,28 +394,24 @@ segplot(I ~ lwr + upr | P,
         cld = pred$cld,
         panel = panel.groups.segplot,
         pch = key$points$pch[as.integer(pred$H)]) +
-    # layer(panel.text(y = centers[subscripts],
-    #                  x = as.integer(z)[subscripts] +
-    #                      gap(groups[subscripts], gap),
-    #                  labels = round(centers[subscripts], 3),
-    #                  pos = 1)) +
     layer({
         a <- cld[which.max(nchar(cld))]
         l <- cld[subscripts]
-        x <- as.integer(z)[subscripts] + gap(groups[subscripts], gap)
+        v <- pred$vjust[subscripts]
+        x <- as.integer(z)[subscripts] + centfac(groups[subscripts], gap)
         y <- centers[subscripts]
         # Usa símbolo unicode:
         # http://www.alanwood.net/unicode/geometric_shapes.html
         grid.text("\u25AE",
                   x = unit(x, "native"),
                   y = unit(y, "native"),
-                  vjust = -0.5,
+                  vjust = v,
                   gp = gpar(col = "white")
                   )
         grid.text(l,
                   x = unit(x, "native"),
                   y = unit(y, "native"),
-                  vjust = -0.5,
+                  vjust = v,
                   gp = gpar(col = "black", fontsize = 10))
         })
 ```
@@ -431,7 +426,7 @@ segplot(I ~ lwr + upr | P,
 ftable(xtabs(!is.na(oeme) ~ I + P + H, data = egg))
 
 # ATTENTION: Com os 7 inseticidas dá cela perdida.
-useOuterStrips(xyplot(oeme/otot ~ I | H + P,
+useOuterStrips(xyplot(oeme/opar ~ I | H + P,
                       data = egg[!is.na(egg$oeme), ],
                       jitter.x = TRUE,
                       type = c("p", "a")))
@@ -439,7 +434,7 @@ useOuterStrips(xyplot(oeme/otot ~ I | H + P,
 #-----------------------------------------------------------------------
 # Ajuste do modelo.
 
-m0 <- glm(cbind(oeme, otot - oeme) ~ I * P * H,
+m0 <- glm(cbind(oeme, opar - oeme) ~ I * P * H,
           data = egg,
           family = quasibinomial)
 
@@ -542,7 +537,7 @@ key <- list(points = list(pch = c(1, 19)),
 
 #-----------------------------------------------------------------------
 
-ab <- aggregate(cbind(emerg = oeme/otot) ~ I + H + P,
+ab <- aggregate(cbind(emerg = oeme/opar) ~ I + H + P,
                 data = egg,
                 FUN = mean)
 
@@ -557,7 +552,7 @@ cap <- fgn_("oeme", cap)
 segplot(I ~ lwr + upr | P,
         centers = fit,
         data = pred,
-        xlab = "Insticides",
+        xlab = "Insecticides",
         ylab = "Probability of egg emergency",
         draw = FALSE,
         horizontal = FALSE,
@@ -572,13 +567,13 @@ segplot(I ~ lwr + upr | P,
         pch = key$points$pch[as.integer(pred$H)]) +
     # layer(panel.text(y = centers[subscripts],
     #                  x = as.integer(z)[subscripts] +
-    #                      gap(groups[subscripts], gap),
+    #                      centfac(groups[subscripts], gap),
     #                  labels = round(centers[subscripts], 3),
     #                  pos = 1)) +
     layer({
         a <- cld[which.max(nchar(cld))]
         l <- cld[subscripts]
-        x <- as.integer(z)[subscripts] + gap(groups[subscripts], gap)
+        x <- as.integer(z)[subscripts] + centfac(groups[subscripts], gap)
         y <- centers[subscripts]
         # Usa símbolo unicode:
         # http://www.alanwood.net/unicode/geometric_shapes.html
@@ -697,13 +692,13 @@ segplot(P ~ lwr + upr,
         panel = panel.groups.segplot,
         pch = key$points$pch[as.integer(pred$H)]) +
     # layer(panel.text(y = centers[subscripts],
-    #                  x = as.integer(z)[subscripts] + gap(groups, gap),
+    #                  x = as.integer(z)[subscripts] + centfac(groups, gap),
     #                  labels = pred$cld[subscripts],
     #                  adj = -0.25 * c(1, 1)))
     layer({
         a <- cld[which.max(nchar(cld))]
         l <- cld[subscripts]
-        x <- as.integer(z)[subscripts] + gap(groups[subscripts], gap)
+        x <- as.integer(z)[subscripts] + centfac(groups[subscripts], gap)
         y <- centers[subscripts]
         # Usa símbolo unicode:
         # http://www.alanwood.net/unicode/geometric_shapes.html
@@ -847,7 +842,7 @@ cap <- fgn_("pemer", cap)
 segplot(I ~ lwr + upr | P,
         centers = fit,
         data = pred,
-        xlab = "Insticides",
+        xlab = "Insecticides",
         ylab = "Proportion of parasitoid emergency",
         draw = FALSE,
         horizontal = FALSE,
@@ -862,13 +857,13 @@ segplot(I ~ lwr + upr | P,
         pch = key$points$pch[as.integer(pred$H)]) +
     # layer(panel.text(y = centers[subscripts],
     #                  x = as.integer(z)[subscripts] +
-    #                        gap(groups[subscripts], gap),
+    #                        centfac(groups[subscripts], gap),
     #                  labels = cld[subscripts],
     #                  adj = -0.25 * c(1, 1)))
     layer({
         a <- cld[which.max(nchar(cld))]
         l <- cld[subscripts]
-        x <- as.integer(z)[subscripts] + gap(groups[subscripts], gap)
+        x <- as.integer(z)[subscripts] + centfac(groups[subscripts], gap)
         y <- centers[subscripts]
         # Usa símbolo unicode:
         # http://www.alanwood.net/unicode/geometric_shapes.html
@@ -1006,7 +1001,7 @@ cap <- fgn_("tot", cap)
 segplot(I ~ lwr + upr | P,
         centers = fit,
         data = pred,
-        xlab = "Insticides",
+        xlab = "Insecticides",
         ylab = "Total of parasitoids",
         draw = FALSE,
         horizontal = FALSE,
@@ -1022,7 +1017,7 @@ segplot(I ~ lwr + upr | P,
     layer({
         a <- cld[which.max(nchar(cld))]
         l <- cld[subscripts]
-        x <- as.integer(z)[subscripts] + gap(groups[subscripts], gap)
+        x <- as.integer(z)[subscripts] + centfac(groups[subscripts], gap)
         y <- centers[subscripts]
         # Usa símbolo unicode:
         # http://www.alanwood.net/unicode/geometric_shapes.html
