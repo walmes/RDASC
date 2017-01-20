@@ -33,6 +33,7 @@ Suggests:
     captioner,
     mgcv,
     nlme,
+    proto,
     nls2,
     rootSolve,
     testthat
