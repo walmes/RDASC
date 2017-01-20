@@ -23,7 +23,8 @@ session_info()
 
 inpack <- installed.packages()
 rownames(inpack) <- NULL
-print(inpack[, c("Package", "Version")], quote = FALSE)
+print(inpack[order(inpack[, "Package"]), c("Package", "Version")],
+      quote = FALSE)
 
 #-----------------------------------------------------------------------
 # Load package objects.
