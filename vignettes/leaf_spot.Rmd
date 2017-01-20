@@ -23,6 +23,7 @@ library(latticeExtra)
 library(plyr)
 library(rootSolve)  # gradient().
 library(wzRfun)     # panel.cbH().
+library(proto)
 library(nls2)       # as.proto.list(), necessária para as.lm().
 source("http://leg.ufpr.br/~walmes/cursoR/ciaeear/as.lm.R")
 ```
