@@ -30,6 +30,10 @@ Suggests:
     reshape2,
     knitr,
     rmarkdown,
+    mgcv,
+    nlme,
+    nls2,
+    rootSolve,
     testthat
 VignetteBuilder: knitr
 RoxygenNote: 5.0.1
