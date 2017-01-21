@@ -19,20 +19,11 @@ vignette: >
 # devtools::install_github("walmes/wzRfun")
 
 # .libPaths("/usr/lib/R/site-library")
-library(wzRfun)
 library(lattice)
 library(latticeExtra)
 library(plyr)
 library(rootSolve)  # gradient().
 library(wzRfun)     # panel.cbH().
-library(proto)
-ls("package:proto")
-
-library(nls2)       # as.proto.list(), necessária para as.lm().
-ls("package:nls2")
-
-source("http://leg.ufpr.br/~walmes/cursoR/ciaeear/as.lm.R")
-ls()
 ```
 ```{r, eval=FALSE}
 library(wzCoop)
