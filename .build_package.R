@@ -57,9 +57,9 @@ if (cp > 0) { check_man() } else { check_doc() }
 #-----------------------------------------------------------------------
 # Generate the rendered vignettes.
 
-if (length(list.files("./vignettes"))) {
-    build_vignettes(dependencies = FALSE)
-}
+# if (length(list.files("./vignettes"))) {
+#     build_vignettes(dependencies = FALSE)
+# }
 
 #-----------------------------------------------------------------------
 # Check the entire package.
