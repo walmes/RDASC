@@ -17,6 +17,8 @@ vignette: >
 ```{r, message=FALSE, results="hide"}
 # https://github.com/walmes/wzRfun
 # devtools::install_github("walmes/wzRfun")
+
+# .libPaths("/usr/lib/R/site-library")
 library(wzRfun)
 library(lattice)
 library(latticeExtra)
@@ -24,8 +26,13 @@ library(plyr)
 library(rootSolve)  # gradient().
 library(wzRfun)     # panel.cbH().
 library(proto)
+ls("package:proto")
+
 library(nls2)       # as.proto.list(), necessária para as.lm().
+ls("package:nls2")
+
 source("http://leg.ufpr.br/~walmes/cursoR/ciaeear/as.lm.R")
+ls()
 ```
 ```{r, eval=FALSE}
 library(wzCoop)
@@ -91,7 +98,6 @@ xyplot(sever ~ dia | ramo,
        ylab = "Severidade da mancha foliar (%)",
        main = "Pomar II",
        as.table = TRUE)
-
 ```
 
 Pelos diagramas de dipersão, verifica-se que existe tanto variabilidade
@@ -109,16 +115,14 @@ planta, as condições de solo, a exposição do ramo ao sol, etc.
 da <- subset(leaf_spot, pomar == "I")
 
 # Calibrando o chute inicial.
-start <- list(A = 80, xc = 80, sc = 20)
+start <- list(A = 80, I = 80, S = 20)
 xyplot(sever ~ dia, data = da) +
-    layer(panel.curve(A/(1 + exp(-(x - xc)/sc)), col = 2),
+    layer(panel.curve(A/(1 + exp(-(x - I)/S)), col = 2),
           data = start)
 
-n0 <- nls(sever ~ A/(1 + exp(-(dia - xc)/sc)),
+n0 <- nls(sever ~ A/(1 + exp(-(dia - I)/S)),
           data = da,
           start = start)
-
-summary(n0)
 
 # Diagnóstico
 m0 <- as.lm(n0)
@@ -129,9 +133,12 @@ layout(1)
 # Estimativas.
 summary(n0)
 
+# Taxa no ponto de inflexão.
+coef(n0)["A"]/(4 * coef(n0)["S"])
+
 # Resultado do ajuste.
 xyplot(sever ~ dia, data = da) +
-    layer(panel.curve(A/(1 + exp(-(x - xc)/sc)), col = 2),
+    layer(panel.curve(A/(1 + exp(-(x - I)/S)), col = 2),
           data = as.list(coef(n0)))
 ```
 
@@ -139,7 +146,6 @@ xyplot(sever ~ dia, data = da) +
 ## Ajuste de Modelo de Regressão Não Linear com Efeitos Aleatórios
 
 ```{r}
-
 library(nlme)
 
 da <- da[complete.cases(da), ]
@@ -147,31 +153,34 @@ da <- groupedData(sever ~ dia | ramo/folha,
                   data = da,
                   order.groups = FALSE)
 
-n1 <- nlme(sever ~ A/(1 + exp(-(dia - xc)/sc)),
-           fixed = A + xc + sc ~ 1,
-           random = xc + sc ~ 1 | ramo/folha,
+n1 <- nlme(sever ~ A/(1 + exp(-(dia - I)/S)),
+           fixed = A + I + S ~ 1,
+           random = I + S ~ 1 | ramo/folha,
            data = da,
            start = coef(n0))
 logLik(n1)
 
-# n2 <- nlme(sever ~ A/(1 + exp(-(dia - xc)/sc)),
-#            fixed = A + xc + sc ~ 1,
-#            random = A + sc ~ 1 | folha,
+# n2 <- nlme(sever ~ A/(1 + exp(-(dia - I)/S)),
+#            fixed = A + I + S ~ 1,
+#            random = A + S ~ 1 | folha,
 #            data = da,
 #            start = coef(n0),
 #            control = list(maxIter = 100))
 # logLik(n2)
 
-# xc + sc ~ 1 | ramo/folha 'log Lik.' -4465.499 (df=10)
-# xc + sc ~ 1 | folha      'log Lik.' -4516.702 (df=7)
-# xc      ~ 1 | folha      'log Lik.' -4909.711 (df=5)
-#  A      ~ 1 | folha      'log Lik.' -4968.641 (df=5)
-# sc      ~ 1 | folha NA
-#  A + xc ~ 1 | folha NA
-#  A + sc ~ 1 | folha NA
+# I + S ~ 1 | ramo/folha 'log Lik.' -4465.499 (df=10)
+# I + S ~ 1 | folha      'log Lik.' -4516.702 (df=7)
+# I     ~ 1 | folha      'log Lik.' -4909.711 (df=5)
+# A     ~ 1 | folha      'log Lik.' -4968.641 (df=5)
+# S     ~ 1 | folha NA
+# A + I ~ 1 | folha NA
+# A + S ~ 1 | folha NA
 
 # Estimativas.
 summary(n1)
+
+# Taxa no ponto de inflexão.
+fixef(n1)["A"]/(4 * fixef(n1)["S"])
 
 # Resultado do ajuste.
 plot(augPred(n1, level = 0), as.table = TRUE)
@@ -200,7 +209,7 @@ ci0 <- ci0[, c(3, 1, 2)]
 colnames(ci0) <- colnames(ci1) <- c("est", "lwr", "upr")
 
 ci <- as.data.frame(rbind(ci0, ci1))
-ci$par <- factor(rownames(ci), levels = c("A", "xc", "sc"))
+ci$par <- factor(rownames(ci), levels = c("A", "I", "S"))
 rownames(ci) <- NULL
 ci$model <- gl(2, 3, labels = c("nls", "nlme"))
 ci
@@ -220,12 +229,12 @@ segplot(model ~ lwr + upr | par,
 # a <- ranef(n1)
 # str(a)
 #
-# qqmath(a$ramo$xc)
-# qqmath(a$ramo$sc)
+# qqmath(a$ramo$I)
+# qqmath(a$ramo$S)
 # splom(a$ramo)
 #
-# qqmath(a$folha$xc)
-# qqmath(a$folha$sc)
+# qqmath(a$folha$I)
+# qqmath(a$folha$S)
 # splom(a$folha)
 
 #-----------------------------------------------------------------------
@@ -241,7 +250,7 @@ pred$y1 <- predict(n1, newdata = pred, level = 0)
 # Modelo escrito como função dos parâmetros (theta).
 f <- function(theta, xx) {
     with(as.list(theta),
-         A/(1 + exp(-(xx - xc)/sc)))
+         A/(1 + exp(-(xx - I)/S)))
 }
 
 # Matriz com as derivadas parciais de theta no mle de theta.
