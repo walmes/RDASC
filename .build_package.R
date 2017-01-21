@@ -83,7 +83,9 @@ rm(list = ls())
 # .libPaths(new = lib)
 # .libPaths()
 
-install()
+install(build_vignettes = FALSE,
+        dependencies = FALSE,
+        upgrade_dependencies = FALSE)
 
 # unlink(lib, recursive = TRUE)
 
