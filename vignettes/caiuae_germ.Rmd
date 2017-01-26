@@ -13,7 +13,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-## Session Definition
+# Session Definition
 
 ```{r, message=FALSE, results="hide"}
 # https://github.com/walmes/wzRfun
@@ -34,7 +34,7 @@ library(wzCoop)
 source("config/setup.R")
 ```
 
-## Exploratory data analysis
+# Exploratory data analysis
 
 ```{r}
 # Object structure.
@@ -73,8 +73,7 @@ caiuae_germ$ivg <- rowSums(sweep(x = caiuae_germ[, c(3:7)],
                                  FUN = "/"))
 ```
 
-****
-## Visualização e análise exploratória dos dados
+# Visualização e análise exploratória dos dados
 
 ```{r visData}
 #-----------------------------------------------------------------------
@@ -128,8 +127,7 @@ xyplot(ivg ~ temp, data = caiuae_germ,
        ylab = "Germination speed index")
 ```
 
-****
-## Germinação final (36 dias)
+# Germinação final (36 dias)
 
 Para análise da germinação final, aos 36 dias após estímulom, considerou
 distribuição binomial sendo a germinação de uma semente o evento ou
@@ -211,7 +209,11 @@ grid <- equallevels(attr(L, "grid"), caiuae_germ)
 Lu <- by(data = L, INDICES = grid$temp, FUN = as.matrix)
 Lu <- lapply(Lu, FUN = "rownames<-", levels(grid$umid))
 Lu <- ldply(lapply(Lu, apmc, model = m0, test = "fdr", focus = "umid"),
-            .id = "temp")
+            .id = "temp",
+            .fun = function(x) {
+                x$cld <- ordered_cld(x$cld, x$fit)
+                return(x)
+            })
 Lu[, c("fit", "lwr", "upr")] <-
     apply(Lu[, c("fit", "lwr", "upr")],
           MARGIN = 2,
@@ -227,7 +229,7 @@ segplot(umid ~ lwr + upr | temp, centers = fit,
             panel.segplot(z = z, centers = centers,
                           subscripts = subscripts, ...)
             panel.text(y = centers[subscripts],
-                       x = as.integer(z[subscripts]), pos = 2,
+                       x = as.integer(z[subscripts]), pos = 4,
                        labels = txt[subscripts])
         })
 
@@ -237,7 +239,11 @@ segplot(umid ~ lwr + upr | temp, centers = fit,
 Lt <- by(data = L, INDICES = grid$umid, FUN = as.matrix)
 Lt <- lapply(Lt, FUN = "rownames<-", levels(grid$temp))
 Lt <- ldply(lapply(Lt, apmc, model = m0, test = "fdr", focus = "temp"),
-            .id = "umid")
+            .id = "umid",
+            .fun = function(x) {
+                x$cld <- ordered_cld(x$cld, x$fit)
+                return(x)
+            })
 Lt[, c("fit", "lwr", "upr")] <-
     apply(Lt[, c("fit", "lwr", "upr")],
           MARGIN = 2, FUN = m0$family$linkinv)
@@ -265,8 +271,7 @@ linear. Letras diferentes ao lado das estimativas indicam contrastes não
 nulos (a 5%) entre parâmetros para um nível fixo do fator indicado nas
 tarjas.
 
-****
-## Germinação inicial (aos 15 dias)
+# Germinação inicial (aos 15 dias)
 
 Assim como para a germinação final, para a germinação inicial
 considerou-se distribuição quasi binomial também, pelos mesmos motivos.
@@ -300,7 +305,11 @@ grid <- equallevels(attr(L, "grid"), caiuae_germ)
 Lu <- by(data = L, INDICES = grid$temp, FUN = as.matrix)
 Lu <- lapply(Lu, FUN = "rownames<-", levels(grid$umid))
 Lu <- ldply(lapply(Lu, apmc, model = m0, test = "fdr", focus = "umid"),
-            .id = "temp")
+            .id = "temp",
+            .fun = function(x) {
+                x$cld <- ordered_cld(x$cld, x$fit)
+                return(x)
+            })
 Lu[, c("fit", "lwr", "upr")] <-
     apply(Lu[, c("fit", "lwr", "upr")],
           MARGIN = 2, FUN = m0$family$linkinv)
@@ -316,7 +325,8 @@ segplot(umid ~ lwr + upr | temp,
             panel.segplot(z = z, centers = centers,
                           subscripts = subscripts, ...)
             panel.text(y = centers[subscripts],
-                       x = as.integer(z[subscripts]), pos = 2,
+                       x = as.integer(z[subscripts]),
+                       pos = 4,
                        labels = txt[subscripts])
         })
 
@@ -326,7 +336,11 @@ segplot(umid ~ lwr + upr | temp,
 Lt <- by(data = L, INDICES = grid$umid, FUN = as.matrix)
 Lt <- lapply(Lt, FUN = "rownames<-", levels(grid$temp))
 Lt <- ldply(lapply(Lt, apmc, model = m0, test = "fdr", focus = "temp"),
-            .id = "umid")
+            .id = "umid",
+            .fun = function(x) {
+                x$cld <- ordered_cld(x$cld, x$fit)
+                return(x)
+            })
 Lt[, c("fit", "lwr", "upr")] <-
     apply(Lt[, c("fit", "lwr", "upr")],
           MARGIN = 2, FUN = m0$family$linkinv)
@@ -354,8 +368,7 @@ repetições como tendo 1 semente germinada para evitar problemas de
 estimação, visto que a probabilidade de sucesso tem qus ser maior que
 zero ($p > 0$).
 
-****
-## IVG - índice de velocidade de germinação
+# IVG - índice de velocidade de germinação
 
 O indice de velocidade de gerimanação, embora seja uma função de
 variáveis discretas, assumiu-se distribuição normal (mesmo porque
@@ -410,7 +423,11 @@ grid <- equallevels(attr(L, "grid"), caiuae_germ)
 Lu <- by(data = L, INDICES = grid$temp, FUN = as.matrix)
 Lu <- lapply(Lu, FUN = "rownames<-", levels(grid$umid))
 Lu <- ldply(lapply(Lu, apmc, model = m0, test = "fdr", focus = "umid"),
-            .id = "temp")
+            .id = "temp",
+            .fun = function(x) {
+                x$cld <- ordered_cld(x$cld, x$fit)
+                return(x)
+            })
 Lu[, c("fit", "lwr", "upr")] <-
     apply(Lu[, c("fit", "lwr", "upr")],
           MARGIN = 2, FUN = function(x) x^2 - 0.5)
@@ -425,7 +442,7 @@ segplot(umid ~ lwr + upr | temp, centers = fit, data = Lu,
             panel.segplot(z = z, centers = centers,
                           subscripts = subscripts, ...)
             panel.text(y = centers[subscripts],
-                       x = as.integer(z[subscripts]), pos = 2,
+                       x = as.integer(z[subscripts]), pos = 4,
                        labels = txt[subscripts])
         })
 
@@ -434,7 +451,11 @@ segplot(umid ~ lwr + upr | temp, centers = fit, data = Lu,
 Lt <- by(data = L, INDICES = grid$umid, FUN = as.matrix)
 Lt <- lapply(Lt, FUN = "rownames<-", levels(grid$temp))
 Lt <- ldply(lapply(Lt, apmc, model = m0, test = "fdr", focus = "temp"),
-            .id = "umid")
+            .id = "umid",
+            .fun = function(x) {
+                x$cld <- ordered_cld(x$cld, x$fit)
+                return(x)
+            })
 Lt[, c("fit", "lwr", "upr")] <-
     apply(Lt[, c("fit", "lwr", "upr")],
           MARGIN = 2, FUN = function(x) x^2 - 0.5)
@@ -455,8 +476,7 @@ segplot(temp ~ lwr + upr | umid,
         })
 ```
 
-****
-## Session information
+# Session information
 
 ```{r, echo=FALSE, results="hold"}
 cat(format(Sys.time(), format = "%A, %d de %B de %Y, %H:%M"),
@@ -464,4 +484,4 @@ cat(format(Sys.time(), format = "%A, %d de %B de %Y, %H:%M"),
 sessionInfo()
 ```
 
-## References
+# References
