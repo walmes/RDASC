@@ -1,0 +1,207 @@
+#' @name sensitivity_ake_b
+#' @title Effect of fungicide sprays programs and pistachio hedging on
+#'     sensitivity of \emph{Alternaria alternata} to fluopyram,
+#'     penthiopyrad and fluxapyroxad in \emph{Pistachio orchard} of
+#'     Tulare County, California.
+#'
+#' @description The experiment was established in a commercial pistachio
+#'     orchard in Tulare County, California. The total area sizes 2.9 ha
+#'     with density of 335 plants/ha. In total, 12 plots were set with
+#'     approximately 80 pistachio trees cv. Kerman spaced at 5.8 m
+#'     between rows and 5.2 m between plants. Each plot included four
+#'     rows in width (see Figure).  In the year 2015, a heavy and
+#'     normal hedging were intercalated, resulting in 6 plots for each
+#'     hedging type.  No hedging was made in 2016.
+#'
+#'     Within each plot, a fungicide free sub-plot with 20 plants (4
+#'     rows by 5 plants) was set as a control. Along the plot central
+#'     rows, four plants (three inside the treated plot and one inside
+#'     the control sub-plot) were identified for isolate collection,
+#'     severity and defoliation assessments.  In total, 48 plants were
+#'     identified.
+#'
+#'     The fungicide treatment included three different programs,
+#'     described below.
+#'
+#' \describe{
+#'
+#'   \item{treatment 1}{Merivon? (1st application) and Switch? (2nd
+#'     application).}
+#'
+#'   \item{treatment 2}{FontelisTM (1st application) and Switch? (2nd
+#'     application).}
+#'
+#'   \item{treatment 3}{Merivon? (1st application), Switch? (2nd
+#'     application) and Gem? (third application)}
+#'
+#' }
+#'
+#'     The combination of spray program and hedging type allowed two
+#'     replication plots per treatment.  In order to evaluate the
+#'     fungicide program effect on \emph{A. alternata} SDHI sensitivity,
+#'     four isolate populations were collected in two years of
+#'     experiment.
+#'
+#'     In 2015, the population \strong{A} (\eqn{n = 59}) and \strong{B}
+#'     (\eqn{n = 59}) were collected in late-May and mid-September
+#'     respectively. In 2016, the population \strong{C} (\eqn{n = 79})
+#'     and \strong{D} (\eqn{n = 63}) were collected in early-May and
+#'     mid-September respectively.
+#'
+#'     This arrangement allowed to sample isolates before (\strong{A}
+#'     and \strong{C}) and after (\strong{B} and \strong{D}) the spray
+#'     season.  In our study, the sensitivity to SDHI was determined
+#'     throughout the effective concentration that inhibits mycelial
+#'     growth by 50\% (EC50, effective concentration).  To obtain the
+#'     sensitivity values, three SDHI fungicides stock solutions were
+#'     prepared at 10 g a.i. liter-1 each.  The fungicides used were:
+#'     technical grade fluopyram-fp (a.i. 99.13\%, Bayer CropScience)
+#'     and penthiopyrad-pe (a.i. 99.5\%, DuPont Company) diluted in
+#'     acetone; and the commercial product of fluxapyroxad-fd (Sercadis
+#'     300 SC, BASF, The Chemical Company) diluted in sterile deionized
+#'     water.
+#'
+#'     To determine an isolate's EC50, stock solution was diluted in
+#'     autoclaved YBA agar medium at concentrations of 0 (control),
+#'     0.01, 0.03, 0.12, 0.48, 1.92, 7.68, 30.72 and 122.88
+#'     \eqn{\mu}g/ml. For each isolate tested, a 5 mm mycelial plug was
+#'     transferred from a 7-day-old colony and placed onto the YBA media
+#'     supplemented with one of the above fungicide
+#'     concentrations. Intercalate number of repetitions were prepared,
+#'     where 0 (control), 0.01, 0.12, 1.92, and 30.72 \eqn{\mu}g/ml
+#'     received two repetitions, and the other doses one.
+#'
+#'     Plates were incubated in dark for seven days at room temperature
+#'     prior to colony measurement, taken from two perpendicular
+#'     diameters. For each concentration, the inhibition of colony
+#'     growth (\eqn{L_i}) of isolate \eqn{i} was calculated as \eqn{L_i
+#'     = (C_{ck}-C_i)/C_{ck}\times 100}, where \eqn{C_{ck}} is the mean
+#'     colony diameter of the control with no fungicide, and \eqn{C_i}
+#'     is the mean colony diameter of the isolate \eqn{i} on the
+#'     supplemented medium.  The EC50 values were analysed by logarithm
+#'     (\eqn{log_{10}}) transforming the fungicide concentrations and
+#'     then performing linear regressions of the colony inhibition
+#'     values (\eqn{L}) by the \eqn{log_{10}} concentrations.
+#'
+#' @format Um \code{data.frame} 10920 observations of  11 variables
+#'     described below.
+#'
+#' \describe{
+#'
+#' \item{\code{yr}}{A 2-level factor variable to indicate the year of
+#'     experiment.}
+#'
+#' \item{\code{pop}}{A 4-level factor variable to indicate the isolate
+#'     population collected in 2015, "A" and "B", and 2016, "C" and
+#'     "D". Each population was collected before and after the spray
+#'     season in field, for this reason they belong to the same location
+#'     but the individuals inside the each population are unique,
+#'     meaning that isolate number one, tested for the population "A"
+#'     will never be tested in a different population.}
+#'
+#' \item{\code{hed}}{A 2-factor variable to indicate the hedging type on
+#'     trees.  The hedging is the shape the branchs and limbs are
+#'     pruned. they can be heavy (severe pruning) or normal (regular
+#'     pruning).}
+#'
+#' \item{\code{tra}}{A factor variable to indicate the fungicide
+#'     treatment on field, already described above. the treatment
+#'     combines the use of one SDHI fungicide (Merivon or Fontelis) and
+#'     one or two additional chemical group.}
+#'
+#' \item{\code{plot}}{Not an important variable to consider in the
+#'     analysis. The plot code simply indicate the location of
+#'     experimental plots, they represent the treatment and hedging
+#'     combination in field.}
+#'
+#' \item{\code{iso}}{A factor variable to differenciate the isolates
+#'     collected during the preparation of populations "A", "B", "C" and
+#'     "D". They will never repeat because each isolate is collected
+#'     only one in the field. So, this is an unique ID for isolates.}
+#'
+#' \item{\code{fun}}{A factor variable to indicate the SDHI fungicide
+#'     tested in laboratory. Each isolate collected in field was tested
+#'     \emph{in vitro} for its sensitivity of fluopyram "FP",
+#'     fluxapyroxad "FD", and penthiopyrad "PE".  The shift in
+#'     sensitivity for "FP", "PE", and "FD" is the information we aimed
+#'     to have at the end of this experiment to know, which combination
+#'     of \code{tra} and \code{hed} affected more or less the
+#'     sensitivity of \code{fun}.}
+#'
+#' \item{\code{dos}}{A numeric factor variable to indicate the dose of
+#'     fungicide prepared inside the petri plate. Each dose was prepared
+#'     by the dilution of fungicide stock solution on YBA media. The
+#'     measure unit for fungicide dose is \eqn{\mu}g/ml.}
+#'
+#' \item{\code{rep}}{A numeric variable to indicate the repetition of
+#'     fungicide dose used to calculate the EC50 (sensitivity) of each
+#'     isolate. The repetitions were intercalate, two and one plate per
+#'     dose. Control received two repetitions as well.}
+#'
+#' \item{\code{d1}}{A numeric response variable for the first colony
+#'     diameter measured in mm.  However the data on the table need to
+#'     be divided by 100. Decimals were ignored to facilitate the typing
+#'     of collected data.}
+#'
+#' \item{\code{d2}}{A numeric response variable for the second colony
+#'     diameter measured in mm.  However the data on the table need to
+#'     be divided by 100. Decimals were ignored to facilitate the typing
+#'     of collected data.}
+#'
+#' }
+#'
+#' @source P. S. F. Lichtemberg\eqn{^1}
+#'     (\url{http://lattes.cnpq.br/8132272273348880});
+#'     R. D. Puckett\eqn{^1} (\url{http://kare.ucanr.edu/});
+#'     W. M. Zeviani\eqn{^2} (\url{http://www.leg.ufpr.br/~walmes});
+#'     C. G. Cunningham\eqn{^1} (\url{http://kare.ucanr.edu/});
+#'     T. J. Michailides\eqn{^1}
+#'     (\url{http://ucanr.edu/?facultyid=1535}).  University of
+#'     \eqn{^1}California, Department of Plant Pathology, Kearney
+#'     agricultural, research and extension center, 9240 S Riverbend
+#'     Ave, Parlier, California, US.  \eqn{^2}Universidade Federal do
+#'     Paran?, Departamento de Estat?stica,
+#'
+#' @examples
+#'
+#' # Load and view data.
+#' data(sensitivity_ake_b)
+#' str(sensitivity_ake_b)
+#'
+#' library(lattice)
+#'
+#' xyplot(d1 ~ d2 | as.factor(dos),
+#'        groups = tra,
+#'        data = sensitivity_ake_b,
+#'        as.table = TRUE,
+#'        scales = "free")
+#'
+#' # Unique levels of fungicide dose.
+#' x <- sort(unique(sensitivity_ake_b$dos))
+#'
+#' # Variance of distance between doses.
+#' esp <- function(p) {
+#'     u <- x^p
+#'     u <- (u - min(u))
+#'     u <- u/max(u)
+#'     var(diff(u))
+#' }
+#'
+#' # Optimise de power parameter to the most equally spaced set.
+#' op <- optim(par = c(p = 0.5), fn = esp)
+#'
+#' p <- seq(0, 1, by = 0.01)
+#' v <- sapply(p, esp)
+#' plot(log(v) ~ p, type = "o")
+#' abline(v = op$par)
+#'
+#' # Sensitivity plot of each isolate.
+#' xyplot(d1 ~ dos^0.2 | factor(iso),
+#'        strip = FALSE,
+#'        data = sensitivity_ake_b,
+#'        groups = fun,
+#'        type = c("p", "a"),
+#'        as.table = TRUE,
+#'        scales = list(draw = FALSE))
+#'
+NULL
