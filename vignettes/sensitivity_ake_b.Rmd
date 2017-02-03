@@ -1,0 +1,296 @@
+---
+title: >
+  Effect of fungicide sprays programs and pistachio hedging on
+  sensitivity of *Alternaria alternata* to fluopyram, penthiopyrad and
+  fluxapyroxad in *Pistachio orchard* of Tulare County, California
+# author: |
+#   |                                                                      |
+#   | :------------------------------------------------------------------: |
+#   | [Paulo S. F. Lichtemberg](http://lattes.cnpq.br/8132272273348880)    |
+#   | Ryan D. Puckett                                                      |
+#   | [Walmes M. Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes) |
+#   | Connor G. Cunningham                                                 |
+#   | Themis J. Michailides                                                |
+author: >
+  [Paulo S. F. Lichtemberg](http://lattes.cnpq.br/8132272273348880)</br>
+  Ryan D. Puckett</br>
+  [Walmes M. Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes)</br>
+  Connor G. Cunningham</br>
+  Themis J. Michailides
+date: "`r Sys.Date()`"
+vignette: >
+  %\VignetteIndexEntry{Effect of fungicide sprays programs and pistachio hedging on sensitivity of Alternaria alternata}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Session Definition
+
+```{r, message = FALSE, results = "hide"}
+# https://github.com/walmes/wzRfun
+# devtools::install_github("walmes/wzRfun")
+
+library(lattice)
+library(latticeExtra)
+library(wzRfun)
+```
+```{r, eval = FALSE}
+library(wzCoop)
+```
+```{r setup, include = FALSE}
+source("config/setup.R")
+```
+
+# Experiment and Data Description
+
+# Exploratory Analysis
+
+```{r}
+data(sensitivity_ake_b)
+str(sensitivity_ake_b)
+
+# Short object names are handy.
+sen <- sensitivity_ake_b
+
+# Divide diameters by 100 to convert to milimeters. Calculate mean
+# diameter (dm).
+sen <- within(sen, {
+    d1 <- d1/100
+    d2 <- d2/100
+    dm <- (d1 + d2)/2
+})
+
+# Population along years.
+xtabs(~pop + yr, data = sen)
+
+# Number of observations per factor combination.
+ftable(xtabs(~yr + hed + tra + fun, data = sen))
+
+# Number of isolates per factor combination.
+with(sen,
+     ftable(tapply(iso,
+                   INDEX = list(yr, hed, tra, fun),
+                   FUN = function(x) {
+                       length(unique(x))
+                   })))
+```
+
+```{r}
+xyplot(d2 ~ d1,
+       data = sen,
+       aspect = "iso",
+       xlab = "First diameter (mm)",
+       ylab = "Second diameter (mm)") +
+    layer(panel.abline(a = 0, b = 1))
+
+xyplot(d2 ~ d1 | iso,
+       data = sen,
+       aspect = "iso",
+       groups = fun,
+       strip = FALSE,
+       as.table = TRUE,
+       xlab = "First diameter (mm)",
+       ylab = "Second diameter (mm)") +
+    layer(panel.abline(a = 0, b = 1))
+```
+
+```{r, fig.cap = cap, fig.show = "hold", echo = -(1:2)}
+cap <-
+"Scatter plots of mean diamenter as function of
+ dose grouped by *in vitro* fungicide in natual scale
+ (top) and log-log scale (bottom)."
+cap <- fgn_("dm-x-dos", cap)
+
+# Natural scales.
+xyplot(dm ~ dos | iso,
+       data = sen,
+       groups = fun,
+       type = c("p", "a"),
+       strip = FALSE,
+       as.table = TRUE,
+       xlab = "First diameter (mm)",
+       ylab = "Second diameter (mm)")
+
+# Log-log scales.
+xyplot(dm ~ dos | iso,
+       scales = list(log = TRUE),
+       data = sen,
+       groups = fun,
+       type = c("p", "a"),
+       strip = FALSE,
+       as.table = TRUE,
+       xlab = "First diameter (mm)",
+       ylab = "Second diameter (mm)")
+```
+
+```{r, fig.cap = cap, fig.show = "hold", echo = -(1:2), fig.height = 12}
+cap <-
+"Scatter plot of mean diamenter as function of
+ dose power 1/5 grouped by *in vitro* fungicide."
+cap <- fgn_("dm-x-dos0.2", cap)
+
+# 5th root of dose.
+xyplot(dm ~ dos^0.2 | iso,
+       data = sen,
+       groups = fun,
+       type = c("p", "a"),
+       strip = FALSE,
+       as.table = TRUE,
+       xlab = "First diameter (mm)",
+       ylab = "Second diameter (mm)")
+```
+
+Figure `r fgl_("dm-x-dos")` (top) shows that doses are very skewed.
+Figure `r fgl_("dm-x-dos")` (bottom) shows that in the log-log scale
+there isn't a linear relation between mean diameter and fungicide dose.
+
+Figure `r fgl_("dm-x-dos0.2")` shows that, under the transformed
+5th-root scale, doses levels are close to equally spaced. In fact, 0.2
+was found by minimization of the variance of distance between doses
+($\sigma^2$) a power transformation ($p$) of dose rescaled to a unit
+interval as described by the steps below
+$$
+\begin{align*}
+  z_i &= x_i^p\\
+  u_i &= \frac{z_i - \min(z)}{\max(z) -\min(z)}, \text{then } u_i \in [0, 1] \\
+  d_i &= u_{i+1} - u_{i}\\
+  \bar{d} &= \sum_{i=1}^{k-1} d_i/k \\
+ \sigma^2 &= \sum_{i=1}^{k-1} \frac{(d_i - \bar{d})^2}{k-2}
+\end{align*}
+$$
+where $x$ are doses in natural scale, $z$ are doses power transformed,
+$u$ are scaled to a unit interval, $d$ are diferences between doses,
+$\bar{d}$ is the mean difference and $\sigma^2$ is the variance of
+differences.
+
+```{r}
+# Unique fungicide dose levels.
+x <- sort(unique(sen$dos))
+x
+
+# Variance of distance between doses scaled to a unit interval.
+esp <- function(p) {
+    u <- x^p
+    u <- (u - min(u))
+    u <- u/max(u)
+    var(diff(u))
+}
+
+# Optimise de power parameter to the most equally spaced set.
+op <- optimize(f = esp, interval = c(0, 1))
+op$minimum
+
+p <- seq(0, 1, by = 0.01)
+v <- sapply(p, esp)
+plot(log(v) ~ p, type = "o")
+abline(v = op$minimum)
+```
+
+So $x^0.2$ is the most equally spaced set obtained with a power
+transformation. Equally spaced levels are beneficial beacause reduce
+problems related to leverage.
+
+# Half Effective Concentration (EC~50~) Estimation
+
+ATTENTION: o platô não precisa ser em zero. Talvez uma sigmóide dê um
+bom ajuste também.
+
+To estimate the half effective concentration (EC~50~) a non linear
+segmented model developed based on data aspects
+$$
+f(x) =
+  \begin{cases}
+  \theta_0 - \theta_1 x^{\exp{\theta_2}} & \text{ if } 0 \leq x < x_r \\
+  0 & \text{ if } x \geq x_r
+\end{cases}
+$$
+
+where $\theta_0$ is the intercept and means the colony diameter at dose
+zero ($f(x = 0) = \theta_0$), \theta_1 ($> 0$) is proportional to the
+rate and $\theta_2$ is a shape parameter. The function is constant at 0
+for $x > x_r$,
+$$
+  x_r = \left(\frac{\theta_0}{\theta_1}\right)^{1/\theta_2}.
+$$
+
+If $theta_2 = 0$ then $f$ is a linear function, for $\theta_2 > 0$ the
+function is concave in $(0, x_r)$ and convex for $\theta_2 < 0$.
+
+The above 3-parameter non linear model was fitted to data of diameter
+$\times$ dose for each isolate by leasts squares.
+
+```{r}
+fx <- function(x, th0, th1, th2) {
+    xr <- (th0/th1)^(1/exp(th2))
+    (th0 - th1 * x^exp(th2)) * (x <= xr) + 0
+}
+
+curve(fx(x, th0 = 10, th1 = 1, th2 = 0.3),
+      from = 0, to = 10)
+```
+```{r, eval = FALSE, include = FALSE}
+library(rpanel)
+
+draw <- function(panel) {
+    with(panel, {
+        curve(fx(x, th0, th1, th2),
+              from = 0, to = 10)
+        abline(v = (0.5 * th0/th1)^(1/exp(th2)),
+               h = th0/2)
+    })
+    return(panel)
+}
+
+panel <- rp.control()
+rp.slider(panel = panel, variable = th0, from = 0, to = 10,
+          action = draw, showvalue = TRUE)
+rp.slider(panel = panel, variable = th1, from = -2, to = 2,
+          action = draw, showvalue = TRUE)
+rp.slider(panel = panel, variable = th2, from = -2, to = 2,
+          action = draw, showvalue = TRUE)
+```
+
+```{r}
+sen$iso <- factor(sen$iso, levels = sort(unique(sen$iso)))
+da <- subset(sen, iso == levels(sen$iso)[1])
+
+da$z <- da$dos^0.2
+plot(dm ~ z, data = da)
+
+n0 <- nls(dm ~ fx(z, th0, th1, th2),
+          data = da,
+          start = list(th0 = 20, th1 = 2, th2 = 2))
+summary(n0)
+
+plot(dm ~ z, data = da)
+with(as.list(coef(n0)),
+     curve(fx(x, th0, th1, th2),
+           add = TRUE,
+           col = 4))
+
+n0 <- nls(dm ~ A/(1 + exp(-(z - I)/S)),
+          data = da,
+          start = list(A = 20, I = 1, S = -0.2))
+summary(n0)
+
+plot(dm ~ z, data = da)
+with(as.list(coef(n0)), {
+    curve(A/(1 + exp(-(x - I)/S)),
+          add = TRUE,
+          col = 4)
+    abline(h = A/(1 + exp(0)), v = I)
+})
+```
+
+****
+# Session information
+
+```{r, echo=FALSE, results="hold"}
+cat(format(Sys.time(), format = "%A, %d de %B de %Y, %H:%M"),
+    "----------------------------------------", sep = "\n")
+sessionInfo()
+```
+
+<!------------------------------------------- -->
+[Paulo S. F. Lichtemberg]: http://lattes.cnpq.br/8132272273348880
+[Walmes M. Zeviani]: http://www.leg.ufpr.br/doku.php/pessoais:walmes
