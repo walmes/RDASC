@@ -1,17 +1,28 @@
+/* Corpo ------------------------------------ */
+
+:root{
+    --main-color: #35a08b;
+    --tb-fg-caption-color: #515151;
+}
+
 body, td, caption {
     font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    /* font-family: "Lato", sans-serif; */
     background-color: white;
     font-size: 16px;
     text-align: none;
 }
 
-:root{
-    --main-color: #35a08b;
-}
-
 body {
     margin: auto;
 }
+
+.h1, .h2, .h3, h1, h2, h3 {
+    margin-top: 30px;
+    margin-bottom: 20px;
+}
+
+/* Ambientes monoespaço --------------------- */
 
 tt, code, pre {
     font-family: "Inconsolata", "Andale Mono", monospace;
@@ -21,11 +32,15 @@ pre code {
     font-size: 14px;
 }
 
-p.caption {
-    text-align: left;
-    margin-left: 4em;
-    margin-right: 4em;
-    text-indent: -2em
+code {
+    background-color: unset;
+}
+
+p code,
+table code {
+    padding: 0;
+    font-size: 80%;
+    background-color: unset;
 }
 
 /* R input */
@@ -55,25 +70,67 @@ pre:not([class]), code {
     background-color: #D4D4D4;
 }
 
+/* Code folding ----------------------------- */
+
+div.sourceCode div.row div.col-md-12 {
+    width: calc(100% + 1.2em);
+    height: 0px;
+}
+
+/* Tabela ----------------------------------- */
+
+table.table {
+    /* font-size: 90%; */
+    border-collapse: unset;
+    border-spacing: 0px;
+    border-bottom: 1px solid #515151;
+    border-top: 1px solid #515151;
+}
+
+table.table tr.header th {
+    border-bottom: 1px solid #515151;
+}
+
+/* Tabela com o nome dos autores. */
+h4.author table {
+    border: none;
+    width: auto;
+    margin: 2em auto 2em auto;
+}
+
+h4.author table tbody,
+h4.author table thead,
+h4.author table tr.header th,
+h4.author table tr {
+    border: none;
+    line-height: unset;
+    font-weight: normal;
+}
+
+h4.author table td,
+h4.author table th {
+    border: none;
+    padding: 0 20px 0 20px;
+    font-size: 110%;
+}
+
+/* Figuras ---------------------------------- */
+
 img {
     max-width: 100% !important;
     display: block;
     margin: auto;
 }
 
-#header {
-    text-align: center;
-    margin: 20px 0px 20px 0px;
+/* Legendas ---------------------------------- */
+
+table.table caption,
+p.caption {
+    color: var(--tb-fg-caption-color);
+    text-align: left;
 }
 
-#TOC {
-    font-size: 15px;
-    margin: 0px 0px 20px 0px;
-}
-
-#TOC li {
-    list-style: outside none url;
-}
+/* Parafrases ------------------------------- */
 
 blockquote {
     font-size: 100%;
@@ -96,20 +153,84 @@ blockquote p:last-child {
     display: inherit;
 }
 
+/* Referências ------------------------------ */
+
+div.references p {
+    text-indent: -1em;
+    margin-left: 1em;
+    text-align: left;
+}
+
+/* Hiperlinks ------------------------------- */
+
 a {
-    color: var(--main-color);;
+    color: var(--main-color);
     text-decoration: none;
 }
 
 a:hover, a:focus {
-    color: var(--main-color);;
+    color: var(--main-color);
     text-decoration: underline;
+}
+
+/* Listas ----------------------------------- */
+
+ul li, li ul li, li li ul li {
+    list-style: none;
+}
+
+/* http://www.w3schools.com/charsets/ref_utf_geometric.asp */
+body ul li:before {
+    content: '\25B8';
+    margin-left: -1em;
+    position: absolute;
+}
+
+body li ul li:before {
+    content: '\25B9';
+    color: inherit;
+}
+
+body li li ul li:before {
+    content: '\25B8';
+    color: #AAA;
+}
+
+div.tocify ul li:before {
+    content: '';
+}
+
+ul.dropdown-menu li:before {
+    content: '';
+}
+
+/* Cabeçalho -------------------------------- */
+
+#header {
+    text-align: center;
+    margin: 20px 0px 20px 0px;
+}
+
+/* TOC -------------------------------------- */
+
+#TOC {
+    font-size: 15px;
+    margin: 0px 0px 20px 0px;
+}
+
+#TOC li {
+    /* list-style: outside none url; */
+    list-style: none;
+}
+
+#TOC li:before {
+    content: '';
 }
 
 .list-group-item.active,
 .list-group-item.active:focus,
 .list-group-item.active:hover {
-    background-color: var(--main-color);;
+    background-color: var(--main-color);
 }
 
 .tocify-header {
@@ -125,7 +246,8 @@ a:hover, a:focus {
     padding-left: 15px !important;
 }
 
-.h1, .h2, .h3, h1, h2, h3 {
-    margin-top: 30px;
-    margin-bottom: 20px;
+div.tocify-extend-page {
+	height: 10px !important;
 }
+
+/*------------------------------------------- */
