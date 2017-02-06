@@ -3,14 +3,6 @@ title: >
   Effect of fungicide sprays programs and pistachio hedging on
   sensitivity of *Alternaria alternata* to fluopyram, penthiopyrad and
   fluxapyroxad in *Pistachio orchard* of Tulare County, California
-# author: |
-#   |                                                                      |
-#   | :------------------------------------------------------------------: |
-#   | [Paulo S. F. Lichtemberg](http://lattes.cnpq.br/8132272273348880)    |
-#   | Ryan D. Puckett                                                      |
-#   | [Walmes M. Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes) |
-#   | Connor G. Cunningham                                                 |
-#   | Themis J. Michailides                                                |
 author: >
   [Paulo S. F. Lichtemberg](http://lattes.cnpq.br/8132272273348880)</br>
   Ryan D. Puckett</br>
@@ -32,6 +24,7 @@ vignette: >
 
 library(lattice)
 library(latticeExtra)
+library(plyr)
 library(wzRfun)
 ```
 ```{r, eval = FALSE}
@@ -58,6 +51,7 @@ sen <- within(sen, {
     d1 <- d1/100
     d2 <- d2/100
     dm <- (d1 + d2)/2
+    ar <- pi * (dm/2)^2
 })
 
 # Population along years.
@@ -73,6 +67,13 @@ with(sen,
                    FUN = function(x) {
                        length(unique(x))
                    })))
+
+# Isolates x fungicide missing cells.
+xt <- xtabs(complete.cases(cbind(dm, dos)) ~ iso + fun,
+            data = sen)
+i <- xt == 0
+sum(i)
+xt[rowSums(i) > 0, ]
 ```
 
 ```{r}
@@ -192,94 +193,161 @@ problems related to leverage.
 
 # Half Effective Concentration (EC~50~) Estimation
 
-ATTENTION: o platô não precisa ser em zero. Talvez uma sigmóide dê um
-bom ajuste também.
-
-To estimate the half effective concentration (EC~50~) a non linear
-segmented model developed based on data aspects
-$$
-f(x) =
-  \begin{cases}
-  \theta_0 - \theta_1 x^{\exp{\theta_2}} & \text{ if } 0 \leq x < x_r \\
-  0 & \text{ if } x \geq x_r
-\end{cases}
-$$
-
-where $\theta_0$ is the intercept and means the colony diameter at dose
-zero ($f(x = 0) = \theta_0$), \theta_1 ($> 0$) is proportional to the
-rate and $\theta_2$ is a shape parameter. The function is constant at 0
-for $x > x_r$,
-$$
-  x_r = \left(\frac{\theta_0}{\theta_1}\right)^{1/\theta_2}.
-$$
-
-If $theta_2 = 0$ then $f$ is a linear function, for $\theta_2 > 0$ the
-function is concave in $(0, x_r)$ and convex for $\theta_2 < 0$.
-
-The above 3-parameter non linear model was fitted to data of diameter
-$\times$ dose for each isolate by leasts squares.
-
-```{r}
-fx <- function(x, th0, th1, th2) {
-    xr <- (th0/th1)^(1/exp(th2))
-    (th0 - th1 * x^exp(th2)) * (x <= xr) + 0
-}
-
-curve(fx(x, th0 = 10, th1 = 1, th2 = 0.3),
-      from = 0, to = 10)
-```
-```{r, eval = FALSE, include = FALSE}
-library(rpanel)
-
-draw <- function(panel) {
-    with(panel, {
-        curve(fx(x, th0, th1, th2),
-              from = 0, to = 10)
-        abline(v = (0.5 * th0/th1)^(1/exp(th2)),
-               h = th0/2)
-    })
-    return(panel)
-}
-
-panel <- rp.control()
-rp.slider(panel = panel, variable = th0, from = 0, to = 10,
-          action = draw, showvalue = TRUE)
-rp.slider(panel = panel, variable = th1, from = -2, to = 2,
-          action = draw, showvalue = TRUE)
-rp.slider(panel = panel, variable = th2, from = -2, to = 2,
-          action = draw, showvalue = TRUE)
-```
+Natural cubic splines were used to estimate the half effective
+concentration (EC~50~). A non linear model is usually applied in this
+context but wasn't found a non linear model flexible enough to give a
+good fit either a satisfactory convergence rate. So, despite splines
+haven't a model equation, they are vey flexible and numerical
+root-finding algorithms can e used to compute EG~50~ based on a linear
+interpolated function on a predicted grid. Also, area under the
+sensibility curve (AUSC) were computed by numerical integration under
+dose studied domain.
 
 ```{r}
 sen$iso <- factor(sen$iso, levels = sort(unique(sen$iso)))
-da <- subset(sen, iso == levels(sen$iso)[1])
+sen$ue <- with(sen, interaction(iso, fun, drop = TRUE))
+sen$doz <- sen$dos^0.2
 
-da$z <- da$dos^0.2
-plot(dm ~ z, data = da)
+# A data frame without dose.
+senu <- unique(subset(sen,
+                      select = c(ue, iso, fun, tra, hed, pop, yr)))
 
-n0 <- nls(dm ~ fx(z, th0, th1, th2),
-          data = da,
-          start = list(th0 = 20, th1 = 2, th2 = 2))
-summary(n0)
+# Splines.
+library(splines)
 
-plot(dm ~ z, data = da)
-with(as.list(coef(n0)),
-     curve(fx(x, th0, th1, th2),
-           add = TRUE,
-           col = 4))
+# Function for fitting splines.
+fitting <- function(x) {
+    x <- na.omit(x)
+    if (nrow(x) > 4) {
+        n0 <- lm(dm ~ ns(doz, df = 3), data = x)
+        yr <- range(x$dm)
+        yfit <- predict(n0, newdata = pred)
+        return(cbind(xfit = pred$doz, yfit = yfit))
+    } else {
+        NULL
+    }
+}
 
-n0 <- nls(dm ~ A/(1 + exp(-(z - I)/S)),
-          data = da,
-          start = list(A = 20, I = 1, S = -0.2))
-summary(n0)
+# Values of dose to predict diameter.
+pred <- data.frame(doz = seq(0, max(sen$doz), length.out = 30))
 
-plot(dm ~ z, data = da)
-with(as.list(coef(n0)), {
-    curve(A/(1 + exp(-(x - I)/S)),
-          add = TRUE,
-          col = 4)
-    abline(h = A/(1 + exp(0)), v = I)
-})
+# Appling to all experimental unit.
+res <- ddply(sen, .(ue), .fun = fitting)
+
+# Merge to pair `iso` and `fun`.
+res <- merge(res, senu, by = "ue")
+```
+
+```{r}
+# Estimatinf EC50 and area under curve.
+get_ec50 <- function(x, y, interval = c(0, max(sen$doz))) {
+    fa <- approxfun(x = x, y = y)
+    int <- integrate(fa,
+                     lower = 0,
+                     upper = max(sen$doz))$value
+    mxm <- optimize(fa, interval = interval, maximum = TRUE)
+    ymid <- mxm[[2]]/2
+    u <- try(uniroot(f = function(x) fa(x) - ymid,
+                     interval = interval),
+             silent = TRUE)
+    if (class(u) == "try-error") {
+        return(c(ec50 = NA, ev50 = NA, auc = int))
+    }
+    else {
+        return(c(ec50 = u$root, ev50 = ymid, auc = int))
+    }
+}
+
+# EC50 and AUC for each experimental unit.
+ec <- ddply(res, .(ue), .fun = function(x) get_ec50(x$xfit, x$yfit))
+str(ec)
+
+# Number of not estimated EC50 and AUC.
+cbind(AUC = sum(is.na(ec$auc)), EC50 = sum(is.na(ec$ev50)))
+
+# Scatter plot matrix of estimated values.
+splom(ec[, -1], type = c("p", "smooth"), col.line = 2)
+
+# Correlation among variables.
+cor(ec[, -1], use = "complete")
+
+# Merge to pair `iso` and `fun`.
+ec <- merge(ec, senu, by = "ue", all = TRUE)
+str(ec)
+```
+
+```{r, fig.cap = cap, fig.show = "hold", echo = -(1:2), fig.height = 18}
+cap <-
+"Mean diameter as function of fungicide dose 5th root for each isolate.  Solid line is the natural cubic spline fitted for each fungicide in each isolate. Gray straight line indicates the EC~50~ on each curve."
+cap <- fgn_("splines-fit", cap)
+
+# View the results.
+L <- split(ec, ec$iso)
+xyplot(dm ~ dos^0.2 | iso,
+       data = sen,
+       groups = fun,
+       cex = 0.4,
+       strip = FALSE,
+       as.table = TRUE,
+       auto.key = list(columns = 3,
+                       title = "In vitro fungicide",
+                       cex.title = 1.1),
+       ylim = c(0, NA),
+       xlab = "In vitro fungicide dose 5th root",
+       ylab = "Mean diameter (mm)") +
+    as.layer(xyplot(yfit ~ xfit | iso,
+                    groups = fun,
+                    data = res,
+                    type = "l")) +
+    layer({
+        with(L[[which.packet()]], {
+            cl <- trellis.par.get()$superpose.symbol$col[as.integer(fun)]
+            panel.segments(x0 = ec50,
+                           y0 = ev50,
+                           x1 = ec50,
+                           y1 = 0,
+                           col = "gray50")
+            panel.segments(x0 = ec50,
+                           y0 = ev50,
+                           x1 = 0,
+                           y1 = ev50,
+                           col = "gray50")
+            panel.points(x = ec50,
+                         y = ev50,
+                         pch = 19,
+                         cex = 0.6,
+                         col = cl)
+        })
+    })
+```
+
+****
+# Analysis of Area Under Sensitivity Curve
+
+```{r}
+p <- xyplot(ec50 ~ fun | pop + hed,
+            groups = tra,
+            data = ec[!is.na(ec$ec50), ],
+            type = c("p", "a"))
+useOuterStrips(p)
+
+p <- xyplot(auc ~ fun | pop + hed,
+            groups = tra,
+            data = ec[!is.na(ec$auc), ],
+            type = c("p", "a"))
+useOuterStrips(p)
+
+p <- xyplot(auc ~ tra | pop + hed,
+            groups = fun,
+            data = ec[!is.na(ec$auc), ],
+            type = c("p", "a"))
+useOuterStrips(p)
+
+p <- xyplot(auc ~ pop | tra + fun,
+            groups = hed,
+            data = ec[!is.na(ec$auc), ],
+            type = c("p", "a"))
+useOuterStrips(p)
 ```
 
 ****
