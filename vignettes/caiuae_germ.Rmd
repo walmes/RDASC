@@ -81,6 +81,8 @@ caiuae_germ$ivg <- rowSums(sweep(x = caiuae_germ[, c(3:7)],
 
 leg <- list("Heat treatment period (days)",
             "Moisture content (%)")
+leg <- list("Período de aquecimento (dias)",
+            "Umidade (%)")
 
 xyplot(germ/(germ + ngerm) ~ temp, data = caiuae_germ,
        groups = umid, type = c("p", "a"),
@@ -215,15 +217,15 @@ Lu <- ldply(lapply(Lu, apmc, model = m0, test = "fdr", focus = "umid"),
                 return(x)
             })
 Lu[, c("fit", "lwr", "upr")] <-
-    apply(Lu[, c("fit", "lwr", "upr")],
-          MARGIN = 2,
-          FUN = m0$family$linkinv)
+    100 * apply(Lu[, c("fit", "lwr", "upr")],
+                MARGIN = 2,
+                FUN = m0$family$linkinv)
 
 segplot(umid ~ lwr + upr | temp, centers = fit,
         data = Lu, horizontal = FALSE, draw = FALSE,
         as.table = TRUE, layout = c(NA, 1),
         txt = Lu$cld,
-        ylab = "Germination",
+        ylab = "GERM (%)",
         xlab = leg[[2]],
         panel = function(z, centers, subscripts, txt, ...) {
             panel.segplot(z = z, centers = centers,
@@ -245,15 +247,17 @@ Lt <- ldply(lapply(Lt, apmc, model = m0, test = "fdr", focus = "temp"),
                 return(x)
             })
 Lt[, c("fit", "lwr", "upr")] <-
-    apply(Lt[, c("fit", "lwr", "upr")],
-          MARGIN = 2, FUN = m0$family$linkinv)
+    100 * apply(Lt[, c("fit", "lwr", "upr")],
+                MARGIN = 2,
+                FUN = m0$family$linkinv)
 Lt$temp <- factor(Lt$temp, levels = levels(caiuae_germ$temp))
 
 segplot(temp ~ lwr + upr | umid, centers = fit,
         data = Lt, horizontal = FALSE,
         draw = FALSE, layout = c(NA, 1), as.table = TRUE,
         txt = Lt$cld,
-        ylab = "Germination", xlab = leg[[1]],
+        ylab = "GERM (%)",
+        xlab = leg[[1]],
         panel = function(z, centers, subscripts, txt, ...) {
             panel.segplot(z = z, centers = centers,
                           subscripts = subscripts, ...)
@@ -311,15 +315,16 @@ Lu <- ldply(lapply(Lu, apmc, model = m0, test = "fdr", focus = "umid"),
                 return(x)
             })
 Lu[, c("fit", "lwr", "upr")] <-
-    apply(Lu[, c("fit", "lwr", "upr")],
-          MARGIN = 2, FUN = m0$family$linkinv)
+    100 * apply(Lu[, c("fit", "lwr", "upr")],
+                MARGIN = 2,
+                FUN = m0$family$linkinv)
 
 segplot(umid ~ lwr + upr | temp,
         centers = fit, data = Lu,
         horizontal = FALSE, draw = FALSE,
         layout = c(NA, 1), as.table = TRUE,
         txt = Lu$cld,
-        ylab = "Germination in the first count",
+        ylab = "PCONT (%)",
         xlab = leg[[2]],
         panel = function(z, centers, subscripts, txt, ...) {
             panel.segplot(z = z, centers = centers,
@@ -342,15 +347,16 @@ Lt <- ldply(lapply(Lt, apmc, model = m0, test = "fdr", focus = "temp"),
                 return(x)
             })
 Lt[, c("fit", "lwr", "upr")] <-
-    apply(Lt[, c("fit", "lwr", "upr")],
-          MARGIN = 2, FUN = m0$family$linkinv)
+    100 * apply(Lt[, c("fit", "lwr", "upr")],
+                MARGIN = 2,
+                FUN = m0$family$linkinv)
 Lt$temp <- factor(Lt$temp, levels = levels(caiuae_germ$temp))
 
 segplot(temp ~ lwr + upr | umid,
         centers = fit, data = Lt, horizontal = FALSE,
         draw = FALSE, layout = c(NA, 1), as.table = TRUE,
         txt = Lt$cld,
-        ylab = "Germination in the first count",
+        ylab = "PCONT (%)",
         xlab = leg[[1]],
         panel = function(z, centers, subscripts, txt, ...) {
             panel.segplot(z = z, centers = centers,
@@ -436,7 +442,7 @@ segplot(umid ~ lwr + upr | temp, centers = fit, data = Lu,
         horizontal = FALSE,
         draw = FALSE, layout = c(NA, 1),
         txt = Lu$cld, as.table = TRUE,
-        ylab = "Germination speed index",
+        ylab = "IVG",
         xlab = leg[[2]],
         panel = function(z, centers, subscripts, txt, ...) {
             panel.segplot(z = z, centers = centers,
@@ -465,7 +471,7 @@ segplot(temp ~ lwr + upr | umid,
         centers = fit, data = Lt, horizontal = FALSE,
         draw = FALSE, layout = c(NA, 1), as.table = TRUE,
         txt = Lt$cld,
-        ylab = "Germination speed index",
+        ylab = "IVG",
         xlab = leg[[1]],
         panel = function(z, centers, subscripts, txt, ...) {
             panel.segplot(z = z, centers = centers,
