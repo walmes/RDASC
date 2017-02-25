@@ -32,6 +32,10 @@ library(wzCoop)
 ```
 ```{r setup, include = FALSE}
 source("config/setup.R")
+tbn_ <- captioner(prefix = "Table")
+fgn_ <- captioner(prefix = "Figure")
+tbl_ <- function(label) tbn_(label, display = "cite")
+fgl_ <- function(label) fgn_(label, display = "cite")
 ```
 
 # Experiment and Data Description
@@ -141,11 +145,11 @@ xyplot(dm ~ dos^0.2 | iso,
        ylab = "Second diameter (mm)")
 ```
 
-Figure `r fgl_("dm-x-dos")` (top) shows that doses are very skewed.
-Figure `r fgl_("dm-x-dos")` (bottom) shows that in the log-log scale
+`r fgl_("dm-x-dos")` (top) shows that doses are very skewed.
+`r fgl_("dm-x-dos")` (bottom) shows that in the log-log scale
 there isn't a linear relation between mean diameter and fungicide dose.
 
-Figure `r fgl_("dm-x-dos0.2")` shows that, under the transformed
+`r fgl_("dm-x-dos0.2")` shows that, under the transformed
 5th-root scale, doses levels are close to equally spaced. In fact, 0.2
 was found by minimization of the variance of distance between doses
 ($\sigma^2$) a power transformation ($p$) of dose rescaled to a unit
@@ -187,11 +191,32 @@ plot(log(v) ~ p, type = "o")
 abline(v = op$minimum)
 ```
 
-So $x^0.2$ is the most equally spaced set obtained with a power
+So $x^{0.2}$ is the most equally spaced set obtained with a power
 transformation. Equally spaced levels are beneficial beacause reduce
 problems related to leverage.
 
 # Half Effective Concentration (EC~50~) Estimation
+
+A cubic spline is function constructed of piecewise third-order
+polynomials which pass through a set of $m + 1$ knots. These knots spans
+the observed domain of the continous factor $x$, so the set of knots is
+$$
+  K = \{\xi_0, \xi_1, \ldots, \xi_m\}.
+$$
+
+A function $s(x)$ is a cubic spline if it is made of cubic polynomials
+$s_{i}(x)$ in each interval $[x_{i-1}, x_{m}]$, $i = 1, \ldots, m$.
+
+Those adjacent cubic pylinomials pieces must bind and be smooth at the
+internal knots , so additional constrais are made to result in a
+composite continuous smooth function. Requering continous derivatives,
+we ensure that the resulting function is as smooth as possible.
+
+For natural splines, two aditional boundary conditions are made
+$$
+  s^{''}_{1}(x) = 0, \quad s^{''}_{m}(x) = 0,
+$$
+that is, the pieces at borders aren't cubic but instead linear.
 
 Natural cubic splines were used to estimate the half effective
 concentration (EC~50~). A non linear model is usually applied in this
@@ -201,7 +226,7 @@ haven't a model equation, they are vey flexible and numerical
 root-finding algorithms can e used to compute EG~50~ based on a linear
 interpolated function on a predicted grid. Also, area under the
 sensibility curve (AUSC) were computed by numerical integration under
-dose studied domain.
+studied dose domain.
 
 ```{r}
 sen$iso <- factor(sen$iso, levels = sort(unique(sen$iso)))
@@ -210,7 +235,7 @@ sen$doz <- sen$dos^0.2
 
 # A data frame without dose.
 senu <- unique(subset(sen,
-                      select = c(ue, iso, fun, tra, hed, pop, yr)))
+                      select = c(ue, iso, fun, tra, hed, pop, yr, plot)))
 
 # Splines.
 library(splines)
@@ -348,6 +373,28 @@ p <- xyplot(auc ~ pop | tra + fun,
             data = ec[!is.na(ec$auc), ],
             type = c("p", "a"))
 useOuterStrips(p)
+```
+
+```{r}
+#-----------------------------------------------------------------------
+# Creates block, treatment cell and plants.
+
+ec$blk <- as.integer(as.integer(substr(ec$plot, 0, 1)) > 2)
+ec$cell <- with(ec, interaction(yr, blk, hed, tra, drop = TRUE))
+
+# TODO FIXME: Falta o Paulo passar a coluna que indentifica as plantas
+# (1, 2, e 3) em cada cela experimental.
+
+# ec <- arrange(df = ec, yr, blk, hed, tra, iso, fun)
+# head(ec)
+
+# # Experimental units (plants)
+# ec$plnt <- with(ec, interaction(blk, pop, hed, tra, drop = TRUE))
+# nlevels(ec$plnt)
+#
+# xtabs(~plnt, ec)
+#
+# m0 <- lm()
 ```
 
 ****
