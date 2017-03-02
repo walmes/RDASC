@@ -318,6 +318,9 @@ Lu[, c("fit", "lwr", "upr")] <-
     100 * apply(Lu[, c("fit", "lwr", "upr")],
                 MARGIN = 2,
                 FUN = m0$family$linkinv)
+i <- with(Lu, upr - lwr > 95)
+Lu$upr[i] <- Lu$fit[i]
+Lu$lwr[i] <- Lu$fit[i]
 
 segplot(umid ~ lwr + upr | temp,
         centers = fit, data = Lu,
@@ -351,6 +354,9 @@ Lt[, c("fit", "lwr", "upr")] <-
                 MARGIN = 2,
                 FUN = m0$family$linkinv)
 Lt$temp <- factor(Lt$temp, levels = levels(caiuae_germ$temp))
+i <- with(Lt, upr - lwr > 95)
+Lt$upr[i] <- Lt$fit[i]
+Lt$lwr[i] <- Lt$fit[i]
 
 segplot(temp ~ lwr + upr | umid,
         centers = fit, data = Lt, horizontal = FALSE,
