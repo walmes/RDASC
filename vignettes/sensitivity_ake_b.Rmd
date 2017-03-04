@@ -26,6 +26,10 @@ library(lattice)
 library(latticeExtra)
 library(plyr)
 library(wzRfun)
+library(lme4)
+library(lmerTest)
+library(doBy)
+library(multcomp)
 ```
 ```{r, eval = FALSE}
 library(wzCoop)
@@ -373,28 +377,190 @@ p <- xyplot(auc ~ pop | tra + fun,
             data = ec[!is.na(ec$auc), ],
             type = c("p", "a"))
 useOuterStrips(p)
+
+#-----------------------------------------------------------------------
+# Creates block and treatment cell factors.
+
+ec$blk <- factor(as.integer(as.integer(substr(ec$plot, 0, 1)) > 2))
+ec$cell <- with(ec, interaction(yr, blk, hed, tra, drop = TRUE))
+
+# Number of isolates per cell combination.
+ftable(xtabs(~pop + hed + tra, data = ec))/3
+
+# ddply(ec,
+#       ~yr + pop + tra + hed,
+#       function(x) {
+#           nlevels(droplevels(x$iso))
+#       })
+
+ec <- arrange(df = ec, yr, blk, hed, tra, iso, fun)
+str(ec)
 ```
+
+## 2015
 
 ```{r}
 #-----------------------------------------------------------------------
-# Creates block, treatment cell and plants.
 
-ec$blk <- as.integer(as.integer(substr(ec$plot, 0, 1)) > 2)
-ec$cell <- with(ec, interaction(yr, blk, hed, tra, drop = TRUE))
+ec15 <- subset(ec, yr == 2015)
 
-# TODO FIXME: Falta o Paulo passar a coluna que indentifica as plantas
-# (1, 2, e 3) em cada cela experimental.
+# Mixed effects model.
+m0 <- lmer(auc ~ blk + (1 | iso) + (pop + tra + hed + fun)^2,
+           data = ec15,
+           REML = FALSE)
 
-# ec <- arrange(df = ec, yr, blk, hed, tra, iso, fun)
-# head(ec)
+# r <- residuals(m0)
+# f <- fitted(m0)
+# useOuterStrips(qqmath(~r | pop + tra, data = ec15))
+# useOuterStrips(xyplot(r ~ f| pop + tra, data = ec15))
 
-# # Experimental units (plants)
-# ec$plnt <- with(ec, interaction(blk, pop, hed, tra, drop = TRUE))
-# nlevels(ec$plnt)
-#
-# xtabs(~plnt, ec)
-#
-# m0 <- lm()
+# Wald tests for the fixed effects.
+anova(m0)
+
+# A simpler model.
+m1 <- update(m0, auc ~ blk + (1 | iso) + (pop + tra + fun))
+
+# LRT between nested models.
+anova(m1, m0)
+
+# Parameter estimates.
+summary(m1)
+
+# Least squares means.
+i <- c("pop", "tra", "fun")
+L <- lapply(i,
+       FUN = function(term){
+           L <- LSmeans(m1, effect = term)
+           rownames(L$K) <- L$grid[, 1]
+           a <- apmc(L$K, m1, focus = term)
+           names(a)[1] <- "level"
+           a <- cbind(term = term, a)
+           return(a)
+       })
+res <- ldply(L)
+# str(res)
+
+i <- c("Population", "In vivo fungicide", "In vitro fungicide")
+```
+```{r, fig.cap = cap, echo = -(1:2)}
+cap <-
+"Area under isolate sensitivity curve for levels of population, *in vivo* fungicide and *in vitro* fungicide. Pairs of means in a factor followed by the same letter are not statistically different at 5% significance level."
+cap <- fgn_("auc-2015", cap)
+
+resizePanels(
+    segplot(level ~ lwr + upr | term,
+            centers = fit,
+            data = res,
+            draw = FALSE,
+            layout = c(1, NA),
+            scales = list(y = list(relation = "free")),
+            xlab = "Area under isolate sensitivity curve",
+            ylab = "Levels of each factor",
+            strip = strip.custom(factor.levels = i),
+            cld = res$cld) +
+    layer(panel.text(x = centers,
+                     y = z,
+                     labels = sprintf("%0.1f %s", centers, cld),
+                     pos = 3)),
+    h = sapply(L, nrow)
+)
+```
+
+## 2016
+
+```{r}
+#-----------------------------------------------------------------------
+
+ec16 <- subset(ec, yr == 2016)
+
+# Mixed effects model.
+m0 <- lmer(auc ~ blk + (1 | iso) + (pop + tra + hed + fun)^2,
+           data = ec16,
+           REML = FALSE)
+
+# r <- residuals(m0)
+# f <- fitted(m0)
+# useOuterStrips(qqmath(~r | pop + tra, data = ec15))
+# useOuterStrips(xyplot(r ~ f| pop + tra, data = ec15))
+
+# Wald tests for the fixed effects.
+anova(m0)
+
+# A simpler model.
+m1 <- update(m0, auc ~ blk + (1 | iso) + pop * (tra + fun))
+
+# LRT between nested models.
+anova(m1, m0)
+
+# Parameter estimates.
+summary(m1)
+
+# Least squares means.
+res <- vector(mode = "list", length = 2)
+
+L <- LSmeans(m1, effect = c("pop", "tra"))
+g <- L$grid
+L <- by(L$K, L$grid$pop, as.matrix)
+L <- lapply(L, "rownames<-", levels(ec$tra))
+L <- lapply(L, apmc, model = m1, focus = "tra")
+res[[1]] <- ldply(L, .id = "pop")
+
+L <- LSmeans(m1, effect = c("pop", "fun"))
+g <- L$grid
+L <- by(L$K, L$grid$pop, as.matrix)
+L <- lapply(L, "rownames<-", levels(ec$fun))
+L <- lapply(L, apmc, model = m1, focus = "fun")
+res[[2]] <- ldply(L, .id = "pop")
+
+L <- lapply(res,
+            FUN = function(x) {
+                x$by <- names(x)[2]
+                names(x)[2] <- "term"
+                return(x)
+            })
+res <- ldply(L)
+res <- arrange(res, by, term, pop)
+
+i <- c("In vivo fungicide", "In vitro fungicide")
+p <- c(1, 2)
+```
+```{r, fig.cap = cap, echo = -(1:2)}
+cap <-
+"Area under isolate sensitivity curve for combination between population and *in vitro* fungicide (top) and population and *in vivo* fungicide (bottom). Pairs of means comparing fungicides (*in vivo* or *in vitro*) followed by the same letter are not statistically different at 5% significance level."
+cap <- fgn_("auc-2016", cap)
+
+resizePanels(
+    segplot(term ~ lwr + upr | by,
+            centers = fit,
+            groups = pop,
+            data = res,
+            draw = FALSE,
+            layout = c(1, NA),
+            scales = list(y = list(relation = "free")),
+            xlab = "Area under isolate sensitivity curve",
+            ylab = "Levels of each factor",
+            strip = strip.custom(factor.levels = i),
+            key = list(title = "Population",
+                       cex.title = 1.1,
+                       columns = 2,
+                       type = "b",
+                       divide = 1,
+                       lines = list(pch = p, lty = 1),
+                       text = list(levels(res$pop))),
+            cld = res$cld,
+            panel = panel.groups.segplot,
+            pch = p[as.integer(res$pop)],
+            gap = 0.05) +
+    layer(panel.text(x = centers[subscripts],
+                     y = as.integer(z[subscripts]) +
+                         centfac(groups[subscripts],
+                                 space = gap),
+                     labels = sprintf("%0.1f %s",
+                                      centers[subscripts],
+                                      cld[subscripts]),
+                     pos = 3)),
+    h = c(6, 8)
+)
 ```
 
 ****
