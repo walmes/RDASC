@@ -291,8 +291,9 @@ get_ec50 <- function(x, y, interval = c(0, max(sen$doz))) {
 ec <- ddply(res, .(ue), .fun = function(x) get_ec50(x$xfit, x$yfit))
 str(ec)
 
-# Number of not estimated EC50 and AUC.
-cbind(AUC = sum(is.na(ec$auc)), EC50 = sum(is.na(ec$ev50)))
+# Proportion of not estimated EC50 and AUC.
+cbind(AUC = sum(is.na(ec$auc)),
+      EC50 = sum(is.na(ec$ev50)))/nrow(ec)
 
 # Scatter plot matrix of estimated values.
 splom(ec[, -1], type = c("p", "smooth"), col.line = 2)
