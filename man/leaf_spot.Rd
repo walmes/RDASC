@@ -69,4 +69,3 @@ xyplot(sever ~ dia | ramo + pomar,
        type = "o")
 
 }
-

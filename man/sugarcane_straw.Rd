@@ -95,4 +95,3 @@ xyplot(tch ~ K | palha, groups = N, data = sugarcane_straw,
 }
 \keyword{PS}
 \keyword{contagem}
-

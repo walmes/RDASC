@@ -72,4 +72,3 @@ xyplot(male + female ~ days | ue,
        as.table = TRUE)
 
 }
-

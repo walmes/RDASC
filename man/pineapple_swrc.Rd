@@ -75,4 +75,3 @@ p1 <- xyplot(umid ~ tens | gescobpro + varie,
 useOuterStrips(p1)
 
 }
-

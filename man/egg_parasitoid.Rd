@@ -109,4 +109,3 @@ xtabs(~inset + paras + hosp, data = egg_parasitoid)
 xtabs(~inset + paras + hosp, data = na.omit(egg_parasitoid))
 
 }
-

@@ -12,4 +12,3 @@
     participated. Datasets of each cooperation are documented and its
     analysis are done as package vignettes.
 }
-

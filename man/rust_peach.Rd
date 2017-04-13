@@ -96,4 +96,3 @@ subset(rust_peach, safra == "1" &
                    lado == 1)
 
 }
-

@@ -208,4 +208,3 @@ xyplot(d1 ~ dos^0.2 | factor(iso),
        scales = list(draw = FALSE))
 
 }
-
