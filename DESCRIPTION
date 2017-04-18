@@ -33,6 +33,8 @@ Suggests:
     captioner,
     mgcv,
     nlme,
+    lme4,
+    lmerTest,
     proto,
     nls2,
     rootSolve,
