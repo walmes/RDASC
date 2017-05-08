@@ -1,0 +1,337 @@
+---
+title: >
+  Effect of fungicide sprays programs and pistachio hedging on fruit
+  stain levels caused by *Alternaria* late blight in commercial
+  pistachio orchard of Tulare County, California.
+author: >
+  [Paulo S. F. Lichtemberg](http://lattes.cnpq.br/8132272273348880)</br>
+  Ryan D. Puckett</br>
+  [Walmes M. Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes)</br>
+  Connor G. Cunningham</br>
+  Themis J. Michailides
+date: "`r Sys.Date()`"
+vignette: >
+  %\VignetteIndexEntry{Effect of fungicide sprays programs and pistachio hedging on fruit stain levels caused by \emph{Alternaria} late blight in commercial pistachio orchard of Tulare County, California.}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Session Definition
+
+```{r, message = FALSE, results = "hide"}
+# https://github.com/walmes/wzRfun
+# devtools::install_github("walmes/wzRfun")
+
+library(lattice)
+library(latticeExtra)
+library(plyr)
+library(reshape)
+library(doBy)
+library(multcomp)
+library(lme4)
+library(lmerTest)
+library(wzRfun)
+```
+```{r, eval = FALSE}
+library(wzCoop)
+```
+```{r setup, include = FALSE}
+# Setting to english.
+source("config/setup.R")
+tbn_ <- captioner(prefix = "Table")
+fgn_ <- captioner(prefix = "Figure")
+tbl_ <- function(label) tbn_(label, display = "cite")
+fgl_ <- function(label) fgn_(label, display = "cite")
+```
+
+# Exploratory data analysis
+
+```{r}
+# Data strucuture.
+str(quality_ake_b)
+
+# Short names are easier to use.
+da <- quality_ake_b
+da$yr <- factor(da$yr)
+
+intlev <- c(c0 = "[0]",
+            c1 = "[1, 10]",
+            c2 = "[11, 35]",
+            c3 = "[36, 64]",
+            c4 = "[65, 100]")
+
+# Creating the blocks.
+da$block <- with(da, {
+    factor(ifelse(as.integer(gsub("\\D", "", plo)) > 2, "II", "I"))
+})
+
+# Creating unique levels for trees.
+da$tre <- with(da,
+               interaction(hed, tra, block, tre, drop = TRUE))
+
+# Stack data to plot variables.
+db <- melt(da,
+           id.vars = 1:6,
+           measure.vars = grep("c\\d", names(quality_ake_b)),
+           na.rm = TRUE)
+names(db)[ncol(db) - 1:0] <- c("categ", "freq")
+
+useOuterStrips(
+    xyplot(freq ~ categ | hed + yr,
+           groups = tra,
+           data = db,
+           xlab = "Percentage of the shell surface discolored",
+           ylab = "Number of fruits in each class (n = 100)",
+           jitter.x = TRUE,
+           scales = list(x = list(labels = intlev,
+                                  alternating = 1)),
+           auto.key = list(columns = 2,
+                           title = "Fungicide",
+                           cex.title = 1.1),
+           type = c("p", "a")))
+
+useOuterStrips(
+    xyplot(freq ~ categ | tra + yr,
+           groups = hed,
+           data = db,
+           xlab = "Percentage of the shell surface discolored",
+           ylab = "Number of fruits in each class (n = 100)",
+           jitter.x = TRUE,
+           scales = list(x = list(labels = intlev,
+                                  rot = 45,
+                                  alternating = 1)),
+           auto.key = list(columns = 2,
+                           title = "Hed",
+                           cex.title = 1.1),
+           type = c("p", "a")))
+
+i <- grep("^c\\d$", x = names(da))
+
+# useOuterStrips(
+#     splom(~da[, i] | hed + yr,
+#           groups = tra,
+#           type = c("p", "r"),
+#           data = da))
+```
+
+```{r}
+# Acumulated proportion.
+cml <- t(apply(da[, i], MARGIN = 1, FUN = cumsum))
+cml <- cml[, -length(i)]
+colnames(cml) <- paste0("p", 1:ncol(cml))
+
+# Add acummulated proportions.
+da <- cbind(da, as.data.frame(cml))
+
+db <- melt(da,
+           id.vars = 1:6,
+           measure.vars = colnames(cml),
+           na.rm = TRUE)
+names(db)[ncol(db) - 1:0] <- c("categ", "prop")
+str(db)
+
+accumlev <- c(p1 = "0",
+              p2 = "<=10",
+              p3 = "<=35",
+              p4 = "<=65")
+
+useOuterStrips(
+    xyplot(prop ~ categ | hed + yr,
+           groups = tra,
+           data = db,
+           xlab = "Percentage of the shell surface discolored",
+           ylab = "Number of fruits in each class (n = 100)",
+           jitter.x = TRUE,
+           auto.key = list(columns = 2,
+                           title = "Fungicide",
+                           cex.title = 1.1),
+           scales = list(x = list(labels = accumlev,
+                                  alternating = 1)),
+           type = c("p", "a")))
+
+useOuterStrips(
+    xyplot(prop ~ categ | tra + yr,
+           groups = hed,
+           data = db,
+           xlab = "Percentage of the shell surface discolored",
+           ylab = "Number of fruits in each category (n = 100)",
+           jitter.x = TRUE,
+           auto.key = list(columns = 2,
+                           title = "Hed",
+                           cex.title = 1.1),
+           scales = list(x = list(labels = accumlev,
+                                  alternating = 1)),
+           type = c("p", "a")))
+```
+
+# Analysis of the accumulated proportion
+
+The plots above showed that the greatest difference among levels of
+treaments, either hed or fungicides, occurs for the accumulated
+proportions at class $\leq 35$ (`p2`).  Because of this, the analysis
+will be for this response variable.
+
+The total number of independent observations results from the calculus
+$$
+\begin{aligned}
+  288 \text{ observations} &= 2 \text{ years }
+   \times 2 \text{ blocks } \times \\
+   &\quad\,\, 2 \text{ heds } \times 4 \text{ fungicides } \times \\
+   &\quad\,\, 3 \text{ trees } \times 3 \text{ bags}.\\
+\end{aligned}
+$$
+
+```{r echo = -c(1:2), fig.cap = cap}
+cap <-
+    "Number of fruits with 35% or less of the shell surface discolored as a function of the fungicide and hed level for two years."
+cap <- fgn_("num35less", cap)
+
+da$y <- da$p2
+da <- da[!is.na(da$y), ]
+
+xyplot(p2 ~ tra | yr,
+       groups = hed,
+       data = da,
+       type = c("p", "a"),
+       xlab = "Fungicides",
+       ylab = expression("Number of fruits with" <= "35% of the shell surface discolored"),
+       jitter.x = TRUE,
+       auto.key = list(columns = 2,
+                       title = "Hed",
+                       cex.title = 1.1))
+
+# xyplot(p2 ~ yr | tre,
+#        data = da,
+#        xlab = "Years",
+#        ylab = "Number of fruits with 35% or less damage",
+#        as.table = TRUE,
+#        jitter.x = TRUE)
+```
+
+The analysis are being separated for each year. First, although the
+choosen response variable is limited or bounded (because it is a sample
+proportion), it doesn't show problematic departures from a linear
+(gaussian) model.  Linear models are more flexible for analysing
+clutered data as such.
+
+```{r}
+da15 <- subset(da, yr == "2015")
+da16 <- subset(da, yr == "2016")
+
+# Quasi-binomial model.
+# m0 <- glm(cbind(p2, 100 - p2) ~ block + yr * hed * tra,
+#           family = quasibinomial,
+#           data = da)
+
+# Just to check if the model assumptions are meet.
+m0 <- lm(p2 ~ block + yr * hed * tra,
+         data = da)
+par(mfrow = c(2, 2))
+plot(m0); layout(1)
+
+# Normal approximation goes well.
+```
+
+A simple linear models is fitted only to check how the residuals behave.
+No evidence of departures from models assumptions were found.
+
+```{r}
+# Year 2015.
+m15 <- lmer(p2 ~ block + hed * tra + (1 | tre),
+           data = da15)
+
+# r <- residuals(m15)
+# f <- fitted(m15)
+# plot(r ~ f)
+# qqnorm(r)
+
+anova(m15)
+summary(m15)
+
+# Year 2016.
+m16 <- lmer(p2 ~ block + hed * tra + (1 | tre),
+           data = da16)
+
+# r <- residuals(m16)
+# f <- fitted(m16)
+# plot(r ~ f)
+# qqnorm(r)
+
+anova(m16)
+summary(m16)
+```
+
+For both years, no effect were found for the experimental factors.
+
+```{r}
+# Represent the results with interval confidence on ls means.
+cmp <- list()
+
+lsm <- LSmeans(m15, effect = "hed")
+grid <- equallevels(lsm$grid, da)
+
+L <- lsm$K
+rownames(L) <- grid[, 1]
+
+cmp$hed <-
+    rbind(
+        cbind(yr = "2015", apmc(L, model = m15, focus = "hed")),
+        cbind(yr = "2016", apmc(L, model = m16, focus = "hed")))
+
+lsm <- LSmeans(m15, effect = "tra")
+grid <- equallevels(lsm$grid, da)
+
+L <- lsm$K
+rownames(L) <- grid[, 1]
+
+cmp$tra <-
+    rbind(
+        cbind(yr = "2015", apmc(L, model = m15, focus = "tra")),
+        cbind(yr = "2016", apmc(L, model = m16, focus = "tra")))
+
+cmp <- ldply(cmp,
+             .id = "effect",
+             .fun = function(x) {
+                 names(x)[2] <- "level"
+                 return(x)
+             })
+cmp$level <- factor(cmp$level, levels = unique(cmp$level))
+cmp
+```
+
+```{r echo = -c(1:2), fig.cap = cap}
+cap <-
+    "Mean proportion of fruits with 35% or less of the shell surface discolored as a function of the fungicide and hed level for two years."
+cap <- fgn_("finalresult", cap)
+
+resizePanels(
+    useOuterStrips(
+        segplot(level ~ lwr + upr | yr + effect,
+                centers = fit,
+                data = cmp,
+                draw = FALSE,
+                xlab = "Proportion of fruits with 35% or less damage",
+                ylab = "Levels of the factors",
+                scales = list(y = list(relation = "free"),
+                              alternating = 1),
+                ann = sprintf("%0.2f %s", cmp$fit, cmp$cld)
+                )
+    ), h = c(2, 4)) +
+    layer(panel.text(x = centers[subscripts],
+                     y = z[subscripts],
+                     labels = ann[subscripts],
+                     pos = 3))
+```
+
+****
+# Session information
+
+```{r, echo=FALSE, results="hold"}
+cat(format(Sys.time(), format = "%A, %d de %B de %Y, %H:%M"),
+    "----------------------------------------", sep = "\n")
+sessionInfo()
+```
+
+<!------------------------------------------- -->
+[Paulo S. F. Lichtemberg]: http://lattes.cnpq.br/8132272273348880
+[Walmes M. Zeviani]: http://www.leg.ufpr.br/doku.php/pessoais:walmes
