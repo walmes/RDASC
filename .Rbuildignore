@@ -5,3 +5,5 @@
 ^README.Rmd$
 ^README.md$
 ^index.html$
+^docs$
+^_pkgdown.yml$
