@@ -33,7 +33,7 @@ library(lmerTest)
 library(wzRfun)
 ```
 ```{r, eval = FALSE}
-library(wzCoop)
+library(RDASC)
 ```
 ```{r setup, include = FALSE}
 # Setting to english.

@@ -1,17 +1,17 @@
-Package: wzCoop
+Package: RDASC
 Title: Reproducible Data Analysis of Cientific Cooperations
 Version: 0.0-5
 Date: 2017-01-06
 Authors@R: as.person(c(
     "Walmes Marques Zeviani <walmes@ufpr.br> [cre,aut]"))
-Description: wzCoop is a Reproducible Data Analysis Package. This is an
+Description: RDASC is a Reproducible Data Analysis Package. This is an
     R package to keep, in a reproducible and free accessible way,
     cientific colaborations that I participated. Datasets of each
     cooperation are documented and its analysis are done as package
     vignettes.
 License: GPL-3
-URL: https://gitlab.c3sl.ufpr.br/walmes/wzCoop
-BugReports: https://gitlab.c3sl.ufpr.br/walmes/wzCoop/issues
+URL: https://github.com/walmes/RDASC
+BugReports: https://github.com/walmes/RDASC/issues
 LazyData: true
 Encoding: UTF-8
 Depends:
@@ -25,6 +25,8 @@ Imports:
 Suggests:
     MASS,
     car,
+    splines,
+    arm,
     plyr,
     reshape,
     reshape2,

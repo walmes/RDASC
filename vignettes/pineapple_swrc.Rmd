@@ -30,7 +30,7 @@ pkg <- c("lattice",
 sapply(pkg, library, character.only = TRUE, logical.return = TRUE)
 ```
 ```{r, eval=FALSE}
-library(wzCoop)
+library(RDASC)
 ```
 ```{r setup, include=FALSE}
 source("config/setup.R")

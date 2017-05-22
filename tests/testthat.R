@@ -1,4 +1,4 @@
 library(testthat)
-library(wzCoop)
+library(RDASC)
 
-test_check("wzCoop")
+test_check("RDASC")

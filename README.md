@@ -1,4 +1,4 @@
-`wzCoop` - Reproducible Data Analysis of Scientific Cooperations
+`RDASC` - Reproducible Data Analysis of Scientific Cooperations
 ================================================================
 
 [Walmes Zeviani](mailto:user@example.com)
@@ -18,7 +18,7 @@ To install the package from its git repositpory, run the code below.
 ```r
 # Install from GitLab (sob under development).
 library(devtools)
-install_git(url = "https://gitlab.c3sl.ufpr.br/walmes/wzCoop.git")
+install_git(url = "https://gitlab.c3sl.ufpr.br/walmes/RDASC.git")
 ```
 
 To install from compressed files, visit
@@ -29,12 +29,12 @@ version. Remember to install all package dependencies also.
 
 ```r
 # Installing from tarball (Linux).
-install.packages(pkgs = "wzCoop_x.y-z.tar.gz",
+install.packages(pkgs = "RDASC_x.y-z.tar.gz",
                  repos = NULL,
                  type = "source")
 
 # Instalando a partir do zip (Windows).
-install.packages(pkgs = "wzCoop_x.y.z.zip",
+install.packages(pkgs = "RDASC_x.y.z.zip",
                  repos = NULL,
                  type = "source")
 ```
@@ -43,20 +43,20 @@ To do a tour on the package, run the code below.
 
 ```r
 # Load the package.
-library(wzCoop)
+library(RDASC)
 
 # Show all visible objects.
-ls("package:wzCoop")
+ls("package:RDASC")
 
 # Open the documentation.
-help(package = "wzCoop", help_type = "html")
+help(package = "RDASC", help_type = "html")
 
 # Show all vignettes.
-browseVignettes(package = "wzCoop")
+browseVignettes(package = "RDASC")
 
 # Open a vignette.
-vignette(topic = "vignette_name_here", package = "wzCoop")
+vignette(topic = "vignette_name_here", package = "RDASC")
 
 # Get the citation.
-citation("wzCoop")
+citation("RDASC")
 ```

@@ -27,7 +27,7 @@ library(doBy)
 library(multcomp)
 ```
 ```{r, eval=FALSE}
-library(wzCoop)
+library(RDASC)
 ```
 ```{r setup, include=FALSE}
 source("config/setup.R")
