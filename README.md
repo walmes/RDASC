@@ -1,6 +1,8 @@
 `RDASC` - Reproducible Data Analysis of Scientific Cooperations
 ================================================================
 
+[![Build Status](https://travis-ci.org/walmes/RDASC.svg?branch=master)](https://travis-ci.org/walmes/RDASC)
+
 [Walmes Zeviani](mailto:user@example.com)
 
 This project is a R package with data and vignettes. All data sets are
