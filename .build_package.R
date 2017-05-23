@@ -1,18 +1,17 @@
 #!/usr/bin/env Rscript
 
-#-----------------------------------------------------------------------
-
 options(echo = TRUE)
 R.version.string
 Sys.info()
 
-#-----------------------------------------------------------------------
-# Load packages used develop this package and install packages needed.
+#--------------------------------------------
+# Load packages.
 
+# - Para desenvolvimento do pacote
 library(devtools)
 library(roxygen2)
 
-# Install dependencies (DESCRIPTION)
+# - Install dependencies
 install_github("walmes/wzRfun")
 install_deps(dependencies = TRUE,
              quiet = TRUE,
@@ -26,55 +25,75 @@ rownames(inpack) <- NULL
 print(inpack[order(inpack[, "Package"]), c("Package", "Version")],
       quote = FALSE)
 
-#-----------------------------------------------------------------------
-# Load package objects.
+#--------------------------------------------
+# Load package.
 
 load_all()
 
-search()
-ls("package:wzCoop")
-packageVersion("wzCoop")
+pkg <- basename(getwd())
+# ls(sprintf("package:%s", pkg))
+ls(2)
+packageVersion(pkg)
 
-#-----------------------------------------------------------------------
-# Ignore the check on non-ASCII present in the datasets.
+#--------------------------------------------
+# Ignores non-ASCII characters in the datasets
 
 Sys.setenv(`_R_CHECK_ASCII_DATA_` = "FALSE")
 
-#-----------------------------------------------------------------------
-# Run the unit tests in the package.
-
-test()
-
-#-----------------------------------------------------------------------
-# Create de documentation.
+#--------------------------------------------
+# Creates the documentation.
 
 document()
 
 cp <- compareVersion(a = as.character(packageVersion("devtools")),
                      b = "1.9.1")
-if (cp > 0) { check_man() } else { check_doc() }
 
-#-----------------------------------------------------------------------
-# Generate the rendered vignettes.
+if (cp > 0) {
+    check_man()
+} else {
+    check_doc()
+}
 
-# if (length(list.files("./vignettes"))) {
-#     build_vignettes(dependencies = FALSE)
-# }
+#--------------------------------------------
+# Creates the vignettes.
 
-#-----------------------------------------------------------------------
-# Check the entire package.
+if (length(list.files("./vignettes"))) {
+    build_vignettes(dependencies = FALSE)
+}
 
-check(manual = TRUE,
+#--------------------------------------------
+# Check the package.
+
+check(cleanup = FALSE,
+      manual = TRUE,
       vignettes = FALSE,
-      check_dir = "../")
+      check_dir = ".")
 
-#-----------------------------------------------------------------------
-# Builds the package *.tar.gz.
+#--------------------------------------------
+# Build the package.
 
-build(manual = TRUE, vignettes = TRUE)
+build(manual = TRUE,
+      vignettes = TRUE,
+      path = "./docs")
 
-#-----------------------------------------------------------------------
-# Install the package.
+#--------------------------------------------
+# Creates the pkgdown documentation.
+
+library(pkgdown)
+
+# build_home()
+# build_reference()
+# build_articles()
+build_site()
+
+# Move stylesheet and mathjax files.
+file.copy(from = c("./vignettes/config/pkgdown-style.css",
+                   "./vignettes/config/MathJax.html"),
+          to = "./docs",
+          overwrite = TRUE)
+
+#--------------------------------------------
+# Installs the package.
 
 rm(list = ls())
 
@@ -83,10 +102,20 @@ rm(list = ls())
 # .libPaths(new = lib)
 # .libPaths()
 
+# install()
 install(build_vignettes = FALSE,
         dependencies = FALSE,
         upgrade_dependencies = FALSE)
 
 # unlink(lib, recursive = TRUE)
 
-#-----------------------------------------------------------------------
+#--------------------------------------------
+# Transfer to server public_html.
+
+# IP address and port (you can define these credential in .Rprofile).
+# credent <- scan(n = 2, what = "character")
+# cmd <- sprintf(paste("rsync -avzp ./docs/* --progress",
+#                      '--rsh="ssh -p%s"',
+#                      '"%s:~/public_html/pacotes/RDASC"'),
+#                credent[2], credent[1])
+# system(cmd)
