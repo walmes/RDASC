@@ -1,7 +1,5 @@
 ---
-title: >
-  Doses de Nitrogênio e Potássio para Cana-de-açúcar em Diferentes
-  Sistemas de Manejo no Estado do Paraná
+title: "Doses de Nitrogênio e Potássio para Cana-de-açúcar em Diferentes Sistemas de Manejo no Estado do Paraná"
 author: >
   [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes) &
   [Michael Jonathan Fernandes Alves](http://lattes.cnpq.br/0834978726176394)

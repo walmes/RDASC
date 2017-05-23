@@ -1,6 +1,5 @@
 ---
-title: >
-  Efeito de Inseticidas no Parasitismo de *Trichogramma* em Ovos de Lagartas da Soja
+title: "Efeito de Inseticidas no Parasitismo de *Trichogramma* em Ovos de Lagartas da Soja"
 author: >
   [Tamara Akemi Takahashi](http://lattes.cnpq.br/0906035116528938) &
   [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes)

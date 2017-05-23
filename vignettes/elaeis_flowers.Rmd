@@ -1,9 +1,8 @@
 ---
-title: >
-  Número de Flores de Dendezeiro
+title: "Número de Flores de Dendezeiro"
 author: >
   [Gustavo Azevedo Campos](http://lattes.cnpq.br/8389366082736320),
-  [Rosiana Rodrigues Alves](http://lattes.cnpq.br/3912077777598495),
+  [Rosiana Rodrigues Alves](http://lattes.cnpq.br/3912077777598495) &
   [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes)
 date: "`r Sys.Date()`"
 vignette: >

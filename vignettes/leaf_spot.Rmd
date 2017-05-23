@@ -1,6 +1,5 @@
 ---
-title: >
-  Evolução da Severidade de Mancha Foliar de *Glomerela* em Macieira
+title: "Evolução da Severidade de Mancha Foliar de *Glomerela* em Macieira"
 author: >
   [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes),
   [Rafaele Regina Moreira](http://lattes.cnpq.br/8144030677308566) &

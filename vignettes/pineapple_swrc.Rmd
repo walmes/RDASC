@@ -1,7 +1,5 @@
 ---
-title: >
-  Curva de retenção de Água na Cultura do Abacaxizeiro em Função da
-  Cobertura do Solo e Aplicação de Gesso
+title: "Curva de retenção de Água na Cultura do Abacaxizeiro em Função da Cobertura do Solo e Aplicação de Gesso"
 author: >
   [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes) &
   [Milson Evaldo Serafim](http://lattes.cnpq.br/8676820051946774)

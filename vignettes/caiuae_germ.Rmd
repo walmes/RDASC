@@ -1,6 +1,5 @@
 ---
-title: >
-  Germination and Vigor of caiaué seeds: American oil palm tree
+title: "Germination and vigor of caiaué seeds: american oil palm tree"
 author: >
   [Walmes Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes) &
   [Wanderlei Antônio Alves Lima](http://lattes.cnpq.br/8165833589421209 "email: wanderlei.lima@embrapa.br")
