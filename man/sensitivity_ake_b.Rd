@@ -3,9 +3,9 @@
 \name{sensitivity_ake_b}
 \alias{sensitivity_ake_b}
 \title{Effect of fungicide sprays programs and pistachio hedging on
-    sensitivity of \emph{Alternaria alternata} to fluopyram,
-    penthiopyrad and fluxapyroxad in \emph{Pistachio orchard} of
-    Tulare County, California.}
+    sensitivity of \emph{Alternaria alternata} to fluopyram, penthiopyrad
+    and fluxapyroxad in \emph{Pistachio orchard} of Tulare County,
+    California. #'}
 \format{Um \code{data.frame} 10920 observations of  11 variables
     described below.
 

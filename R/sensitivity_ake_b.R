@@ -1,9 +1,8 @@
 #' @name sensitivity_ake_b
 #' @title Effect of fungicide sprays programs and pistachio hedging on
-#'     sensitivity of \emph{Alternaria alternata} to fluopyram,
-#'     penthiopyrad and fluxapyroxad in \emph{Pistachio orchard} of
-#'     Tulare County, California.
-#'
+#'     sensitivity of \emph{Alternaria alternata} to fluopyram, penthiopyrad
+#'     and fluxapyroxad in \emph{Pistachio orchard} of Tulare County,
+#'     California.
 #' @description The experiment was established in a commercial pistachio
 #'     orchard in Tulare County, California. The total area sizes 2.9 ha
 #'     with density of 335 plants/ha. In total, 12 plots were set with
