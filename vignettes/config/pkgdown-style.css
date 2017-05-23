@@ -1,7 +1,8 @@
+/* Colors and font -------------------------- */
+
 :root{
     --main-color: #35a08b;
     --clear-color: #c6ece4;
-    --tb-fg-caption-color: #515151;
 }
 
 body, td, caption {
@@ -12,7 +13,10 @@ tt, code, pre {
     font-family: "Inconsolata", "Andale Mono", monospace;
 }
 
-caption, p.caption {
+/* Captions --------------------------------- */
+
+caption,
+p.caption {
     text-align: left;
     margin-left: 4em;
     margin-right: 0em;
@@ -20,37 +24,51 @@ caption, p.caption {
     color: inherit;
 }
 
-img {
-    max-width: 100% !important;
+/* Block of quotes -------------------------- */
+
+blockquote {
+    font-size: 100%;
+    width: 66%;
+    margin-left: auto;
+    border: none;
     display: block;
     margin: auto;
 }
 
-blockquote {
-    font-size: 17.5px;
-    width: 90%;
-    border-left: none;
-    margin: auto;
+blockquote p {
+    font-style: italic;
+    text-indent: 0em;
 }
 
-blockquote > blockquote > p {
+blockquote p:last-child {
+    text-indent: 0em;
     text-align: right;
+    font-style: normal;
+    display: inherit;
 }
+
+/* References ------------------------------- */
+
+div.references p {
+    text-indent: -1em;
+    margin-left: 1em;
+    text-align: left;
+}
+
+/* Hyperlinks ------------------------------- */
 
 a {
     color: var(--main-color);
     text-decoration: none;
 }
 
-table a:not(.btn),
-.table a:not(.btn) {
-    color: var(--main--color);
+a:hover,
+a:focus {
+    color: var(--main-color);
     text-decoration: underline;
 }
 
-a:hover, a:focus {
-    color: var(--main-color);
-}
+/* Navigation menu hyperlinks --------------- */
 
 .nav-stacked > li > a {
     padding: 5px 8px;
@@ -69,31 +87,44 @@ a:hover, a:focus {
     background-color: var(--clear-color);
 }
 
+/* Table ------------------------------------ */
+
+table a:not(.btn),
+.table a:not(.btn) {
+    color: var(--main--color);
+    text-decoration: none;
+}
+
+table.table tbody {
+    border-bottom: 2px solid #DDD;
+    border-top: 3px solid #DDD;
+}
+
+table.table thead {
+    border-top: 2px solid #DDD;
+}
+
+table.ref-index tbody {
+    border-bottom: none;
+    border-collapse: unset;
+}
+
+.table > thead > tr > th,
+.table > tbody > tr > th,
+.table > tfoot > tr > th,
+.table > thead > tr > td,
+.table > tbody > tr > td,
+.table > tfoot > tr > td {
+    padding: 1px 5px;
+}
+
+/* Build status ----------------------------- */
+
 img[alt="Build Status"] {
     display: inherit;
 }
 
-table {
-    border-collapse: collapse;
-}
-
-table.ref-index {
-    border-collapse: unset;
-}
-
-tbody {
-    border-bottom: 2px solid #DDD;
-}
-
-tr.header {
-    border-top: 2px solid #DDD;
-    border-bottom: 3px solid #DDD; /* Se <= 2px não aparece. */
-}
-
-table:not(.table-bordered) > tbody > tr > td,
-.table:not(.table-bordered) > tbody > tr > td {
-    border-color: #EEE;
-}
+/* Lists ------------------------------------ */
 
 ul:not([class]) li {
     list-style: none;
@@ -104,3 +135,5 @@ ul:not([class]) li:before {
     margin-left: -1em;
     position: absolute;
 }
+
+/*------------------------------------------- */
