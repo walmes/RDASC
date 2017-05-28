@@ -22,11 +22,11 @@ vignette: >
 library(lattice)
 library(latticeExtra)
 library(plyr)
-library(wzRfun)
 library(lme4)
 library(lmerTest)
 library(doBy)
 library(multcomp)
+library(wzRfun)
 ```
 ```{r, eval = FALSE}
 library(RDASC)
@@ -38,8 +38,6 @@ fgn_ <- captioner(prefix = "Figure")
 tbl_ <- function(label) tbn_(label, display = "cite")
 fgl_ <- function(label) fgn_(label, display = "cite")
 ```
-
-# Experiment and Data Description
 
 # Exploratory Analysis
 
@@ -236,7 +234,8 @@ sen$doz <- sen$dos^0.2
 
 # A data frame without dose.
 senu <- unique(subset(sen,
-                      select = c(ue, iso, fun, tra, hed, pop, yr, plot)))
+                      select = c(ue, iso, fun, tra,
+                                 hed, pop, yr, plot)))
 
 # Splines.
 library(splines)
@@ -438,7 +437,9 @@ L <- lapply(i,
 res <- ldply(L)
 # str(res)
 
-i <- c("Population", "In vivo fungicide", "In vitro fungicide")
+i <- c("Population",
+       expression("Fungicide" ~ italic("in vivo")),
+       expression("Fungicide" ~ italic("in vitro")))
 ```
 ```{r, fig.cap = cap, echo = -(1:2)}
 cap <-
@@ -449,6 +450,7 @@ resizePanels(
     segplot(level ~ lwr + upr | term,
             centers = fit,
             data = res,
+            as.table = TRUE,
             draw = FALSE,
             layout = c(1, NA),
             scales = list(y = list(relation = "free")),
@@ -498,33 +500,34 @@ res <- vector(mode = "list", length = 2)
 
 L <- LSmeans(m1, effect = c("pop", "tra"))
 g <- L$grid
-L <- by(L$K, L$grid$pop, as.matrix)
-L <- lapply(L, "rownames<-", levels(ec$tra))
-L <- lapply(L, apmc, model = m1, focus = "tra")
-res[[1]] <- ldply(L, .id = "pop")
+L <- by(L$K, L$grid$tra, as.matrix)
+L <- lapply(L, "rownames<-", unique(g$pop))
+L <- lapply(L, apmc, model = m1, focus = "pop")
+res[[1]] <- ldply(L, .id = "tra")
 
 L <- LSmeans(m1, effect = c("pop", "fun"))
 g <- L$grid
-L <- by(L$K, L$grid$pop, as.matrix)
-L <- lapply(L, "rownames<-", levels(ec$fun))
-L <- lapply(L, apmc, model = m1, focus = "fun")
-res[[2]] <- ldply(L, .id = "pop")
+L <- by(L$K, L$grid$fun, as.matrix)
+L <- lapply(L, "rownames<-", unique(g$pop))
+L <- lapply(L, apmc, model = m1, focus = "pop")
+res[[2]] <- ldply(L, .id = "fun")
 
 L <- lapply(res,
             FUN = function(x) {
-                x$by <- names(x)[2]
-                names(x)[2] <- "term"
+                x$by <- names(x)[1]
+                names(x)[1] <- "term"
                 return(x)
             })
 res <- ldply(L)
 res <- arrange(res, by, term, pop)
 
-i <- c("In vivo fungicide", "In vitro fungicide")
+i <- c(expression("Fungicide" ~ italic("in vitro")),
+       expression("Fungicide" ~ italic("in vivo")))
 p <- c(1, 2)
 ```
 ```{r, fig.cap = cap, echo = -(1:2)}
 cap <-
-"Area under isolate sensitivity curve for combination between population and *in vitro* fungicide (top) and population and *in vivo* fungicide (bottom). Pairs of means comparing fungicides (*in vivo* or *in vitro*) followed by the same letter are not statistically different at 5% significance level."
+"Area under isolate sensitivity curve for combination between population and *in vitro* fungicide (top) and population and *in vivo* fungicide (bottom). Pairs of means comparing populations in each row of the plot (each factor level at the y-axis) followed by the same letter are not statistically different at 5% significance level."
 cap <- fgn_("auc-2016", cap)
 
 resizePanels(
