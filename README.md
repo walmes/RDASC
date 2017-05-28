@@ -1,9 +1,9 @@
-`RDASC` - Reproducible Data Analysis of Scientific Cooperations
-================================================================
+<img src="https://raw.githubusercontent.com/walmes/RDASC/master/vignettes/config/logo.png" width="120px" align="right" display="block" style="padding-top: 2em; -webkit-filter: drop-shadow(0px 0px 3px #111);">
+
+Reproducible Data Analysis of Scientific Cooperations
+=====================================================
 
 [![Build Status](https://travis-ci.org/walmes/RDASC.svg?branch=master)](https://travis-ci.org/walmes/RDASC)
-
-[Walmes Zeviani](mailto:user@example.com)
 
 This project is a R package with data and vignettes. All data sets are
 of real experiments and belongs to Students and Researchers of many
@@ -15,19 +15,19 @@ This package was built to share the analysis with people involved in
 each research. Also, all analyses can be used for or inspire the
 analysis of new data sets.
 
-To install the package from its git repositpory, run the code below.
+To install the package from its git repository, run the code below.
 
 ```r
-# Install from GitLab (sob under development).
+# Install from GitHub.
 library(devtools)
-install_git(url = "https://gitlab.c3sl.ufpr.br/walmes/RDASC.git")
+install_github("walmes/RDASC")
 ```
 
 To install from compressed files, visit
-<http://leg.ufpr.br/~walmes/pacotes/> and download a `*.tar.gz` if Linux
-or `*.zip` if Windows. Set the working directory to the folder where is
-the file and run the code below. Replace `x.y-z` for the current
-version. Remember to install all package dependencies also.
+<http://leg.ufpr.br/~walmes/pacotes/RDASC> and download a `*.tar.gz` if
+Linux or `*.zip` if Windows. Set the working directory to the folder
+where is the file and run the code below. Replace `x.y-z` for the
+current version. Remember to install all package dependencies also.
 
 ```r
 # Installing from tarball (Linux).
@@ -35,7 +35,7 @@ install.packages(pkgs = "RDASC_x.y-z.tar.gz",
                  repos = NULL,
                  type = "source")
 
-# Instalando a partir do zip (Windows).
+# Installing from tarball (Windows).
 install.packages(pkgs = "RDASC_x.y.z.zip",
                  repos = NULL,
                  type = "source")
