@@ -92,7 +92,7 @@
 #'
 #' @format A list containing data frames.
 #'
-#' \code{quality} is a \code{data.frame} with 288 observations e 12
+#' \code{quality} is a \code{data.frame} with 288 observations and 12
 #'     variables, described below.
 #'
 #' \describe{
@@ -155,7 +155,7 @@
 #'
 #' }
 #'
-#' \code{sensitivity} is a \code{data.frame} with 10920 observations e
+#' \code{sensitivity} is a \code{data.frame} with 10920 observations and
 #'     11 variables, described below.
 #'
 #' \describe{
@@ -213,6 +213,35 @@
 #'
 #' }
 #'
+#' \code{severity} is a \code{data.frame} with 192 observations and
+#'     8 variables, described below.
+#'
+#' \describe{
+#'
+#' \item{\code{yr}}{Described before.}
+#'
+#' \item{\code{hed}}{Described before.}
+#'
+#' \item{\code{tra}}{Described before.}
+#'
+#' \item{\code{plot}}{Described before.}
+#'
+#' \item{\code{tre}}{Described before.}
+#'
+#' \item{\code{rep}}{Interger variable to indicate repetition. Each
+#'     variable of patogenicity were accessed twice per tree.}
+#'
+#' \item{\code{inc}}{Ordered categorical variable to indicate
+#'     incidence. Its a 1 to 5 subjective scale that means 1 (worst or
+#'     high incidence) to 5 (best or low incidence).}
+#'
+#' \item{\code{def}}{Numeric variable to indicate the tree defoliation.
+#'     Defoliation was measured as the number of leaves in the floor at
+#'     the east and west side of each plant counted inside a frame of 1
+#'     square meter randomly placed.}
+#'
+#' }
+#'
 #' @source Paulo dos Santos Faria Lichtemberg\eqn{^1}
 #'     (\url{http://lattes.cnpq.br/8132272273348880}), Ryan D. Puckett
 #'     (\url{http://kare.ucanr.edu/}), Walmes Marques Zeviani\eqn{^2}
@@ -229,17 +258,17 @@
 #' str(ake_b)
 #'
 #' library(reshape)
+#' library(lattice)
+#' library(latticeExtra)
+#'
+#' #--------------------------------------------
+#' # Quality.
 #'
 #' db <- melt(ake_b$quality[, -ncol(ake_b$quality)],
 #'            id.vars = 1:6,
 #'            id.measure = grep("c\\d", names(ake_b$quality)))
-#' str(db)
-#' levels(db$variable)
-#'
 #' names(db)[ncol(db) - 1:0] <- c("categ", "freq")
-#'
-#' library(lattice)
-#' library(latticeExtra)
+#' str(db)
 #'
 #' useOuterStrips(
 #'     xyplot(freq ~ categ | hed + factor(yr),
@@ -260,6 +289,9 @@
 #'            jitter.x = TRUE,
 #'            auto.key = TRUE,
 #'            type = c("p", "a")))
+#'
+#' #--------------------------------------------
+#' # Sensitivity.
 #'
 #' xyplot(d1 ~ d2 | as.factor(dos),
 #'        groups = tra,
@@ -294,5 +326,26 @@
 #'        type = c("p", "a"),
 #'        as.table = TRUE,
 #'        scales = list(draw = FALSE))
+#'
+#' #--------------------------------------------
+#' # Severity.
+#'
+#' combineLimits(
+#'     useOuterStrips(
+#'         xyplot(inc + def ~ tra | yr,
+#'                outer = TRUE,
+#'                groups = hed,
+#'                data = ake_b$severity,
+#'                scales = list(y = list(relation = "free")),
+#'                type = c("p", "a"))
+#'     )
+#' )
+#'
+#' xyplot(inc + def ~ tre,
+#'        outer = TRUE,
+#'        groups = yr,
+#'        data = ake_b$severity,
+#'        scales = list(y = list(relation = "free")),
+#'        type = c("p", "a"))
 #'
 NULL
