@@ -44,11 +44,11 @@ fgl_ <- function(label) fgn_(label, display = "cite")
 # Exploratory Analysis
 
 ```{r}
-data(sensitivity_ake_b)
-str(sensitivity_ake_b)
+data(ake_b)
+str(ake_b$sensitivity)
 
 # Short object names are handy.
-sen <- sensitivity_ake_b
+sen <- ake_b$sensitivity
 
 # Divide diameters by 100 to convert to milimeters. Calculate mean
 # diameter (dm).

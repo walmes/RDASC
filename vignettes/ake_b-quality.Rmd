@@ -45,10 +45,10 @@ fgl_ <- function(label) fgn_(label, display = "cite")
 
 ```{r}
 # Data strucuture.
-str(quality_ake_b)
+str(ake_b$quality)
 
 # Short names are easier to use.
-da <- quality_ake_b
+da <- ake_b$quality
 da$yr <- factor(da$yr)
 
 intlev <- c(c0 = "[0]",
@@ -69,7 +69,7 @@ da$tre <- with(da,
 # Stack data to plot variables.
 db <- melt(da,
            id.vars = 1:6,
-           measure.vars = grep("c\\d", names(quality_ake_b)),
+           measure.vars = grep("c\\d", names(ake_b$quality)),
            na.rm = TRUE)
 names(db)[ncol(db) - 1:0] <- c("categ", "freq")
 
