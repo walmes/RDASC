@@ -1,0 +1,253 @@
+---
+title: "Effect of fungicide sprays programs and pistachio hedging on incidende and severity caused by *Alternaria* late blight in commercial pistachio orchard of Tulare County, California"
+author: >
+  [Paulo S. F. Lichtemberg](http://lattes.cnpq.br/8132272273348880),
+  Ryan D. Puckett,
+  [Walmes M. Zeviani](http://www.leg.ufpr.br/doku.php/pessoais:walmes),
+  Connor G. Cunningham &
+  Themis J. Michailides
+date: "`r Sys.Date()`"
+vignette: >
+  %\VignetteIndexEntry{Effect of fungicide sprays programs and pistachio hedging on severity and defoliation caused by *Alternaria* late blight in commercial pistachio orchard of Tulare County, California}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Session Definition
+
+```{r, message = FALSE, results = "hide"}
+# https://github.com/walmes/wzRfun
+# devtools::install_github("walmes/wzRfun")
+
+library(lattice)
+library(latticeExtra)
+library(plyr)
+library(reshape)
+library(doBy)
+library(multcomp)
+library(lme4)
+library(lmerTest)
+library(wzRfun)
+```
+```{r, eval = FALSE}
+library(RDASC)
+```
+```{r setup, include = FALSE}
+# Setting to english.
+source("config/setup.R")
+tbn_ <- captioner(prefix = "Table")
+fgn_ <- captioner(prefix = "Figure")
+tbl_ <- function(label) tbn_(label, display = "cite")
+fgl_ <- function(label) fgn_(label, display = "cite")
+```
+
+# Exploratory data analysis
+
+```{r}
+# Data strucuture.
+str(ake_b$severity)
+
+# Short names are easier to use.
+da <- ake_b$severity
+da$yr <- factor(da$yr)
+
+# Creating the blocks.
+da$block <- with(da, {
+    factor(ifelse(as.integer(gsub("\\D", "", plo)) > 2, "II", "I"))
+})
+xtabs(~block, data = da)
+
+ftable(xtabs(~yr + tra + hed, data = da))
+xtabs(~yr + rep, data = da)
+
+combineLimits(
+    useOuterStrips(
+        xyplot(inc + def ~ tra | yr,
+               data = da,
+               outer = TRUE,
+               groups = hed,
+               type = c("p", "a"),
+               auto.key = TRUE,
+               jitter.x = TRUE,
+               xlab = "Fungicides",
+               ylab = "Incidence and defoliation",
+               scales = "free")))
+```
+
+# Severity
+
+```{r}
+# Just to barely check the model assumptions.
+m0 <- lm(inc ~ block + yr * tra * hed, data = da)
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+# No transformed.
+da$y <- da$inc
+
+# Mixed models.
+m0 <- lmer(y ~ yr/block + (yr + tra + hed)^2 + (1 | tre),
+           data = da)
+
+anova(m0)
+# summary(m0)
+```
+
+```{r}
+# Fake model just to use the LSmatrix().
+fake <- lm(nobars(formula(m0)), m0@frame)
+
+cmp <- list()
+
+# Main effect of fungicide.
+L <- LSmatrix(fake, effect = "tra")
+grid <- equallevels(attr(L, "grid"), da)
+rownames(L) <- grid[, 1]
+a <- apmc(X = L, model = m0, focus = "tra")
+cmp$tra <- a
+
+# Spliting the effect of head in each year.
+L <- LSmatrix(fake, effect = c("yr", "hed"))
+grid <- equallevels(attr(L, "grid"), da)
+L <- by(L, grid$yr, as.matrix)
+L <- lapply(L, "rownames<-", levels(grid$hed))
+a <- ldply(lapply(L, apmc, model = m0, focus = "hed"), .id = "yr")
+cmp$"yr:hed" <- a
+```
+
+```{r echo = -c(1:2), fig.cap = cap, fig.height = 7}
+cap <-
+    "Mean incidence as function of each factor levels."
+cap <- fgn_("sever", cap)
+
+p1 <- segplot(tra ~ lwr + upr,
+              centers = fit,
+              data = cmp$tra,
+              draw = FALSE,
+              xlab = "Disease incidence",
+              ylab = "Fungicides",
+              ann = sprintf("%0.2f %s",
+                            cmp$tra$fit,
+                            cmp$tra$cld)) +
+    layer(panel.text(x = centers[subscripts],
+                     y = z[subscripts],
+                     labels = ann[subscripts],
+                     pos = 3))
+
+p2 <- segplot(hed ~ lwr + upr | yr,
+              centers = fit,
+              data = cmp$"yr:hed",
+              draw = FALSE,
+              layout = c(1, NA),
+              xlab = "Disease incidence",
+              ylab = "Hedging level",
+              as.table = TRUE,
+              ann = sprintf("%0.2f %s",
+                            cmp$"yr:hed"$fit,
+                            cmp$"yr:hed"$cld)) +
+    layer(panel.text(x = centers[subscripts],
+                     y = z[subscripts],
+                     labels = ann[subscripts],
+                     pos = 3))
+
+print(p1, position = c(0, 0.55, 1, 1), more = TRUE)
+print(p2, position = c(0, 0, 1, 0.55))
+```
+
+# Defoliation
+
+```{r}
+# Just to barely check the model assumptions.
+m0 <- lm(def + 1 ~ block + yr * tra * hed, data = da)
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+MASS::boxcox(m0)
+abline(v = c(0, 1/3, 1/2), col = 2)
+
+# Transformed variable.
+da$y <- da$def^(1/3)
+
+# Mixed models.
+m0 <- lmer(y ~ yr/block + (yr + tra + hed)^2 + (1 | tre),
+           data = da)
+
+anova(m0)
+# summary(m0)
+```
+
+```{r}
+# Fake model just to use the LSmatrix().
+fake <- lm(nobars(formula(m0)), m0@frame)
+
+cmp <- list()
+
+# Main effect of fungicide.
+L <- LSmatrix(fake, effect = "tra")
+grid <- equallevels(attr(L, "grid"), da)
+rownames(L) <- grid[, 1]
+a <- apmc(X = L, model = m0, focus = "tra")
+cmp$tra <- a
+
+# Spliting the effect of head in each year.
+L <- LSmatrix(fake, effect = c("yr", "hed"))
+grid <- equallevels(attr(L, "grid"), da)
+L <- by(L, grid$yr, as.matrix)
+L <- lapply(L, "rownames<-", levels(grid$hed))
+a <- ldply(lapply(L, apmc, model = m0, focus = "hed"), .id = "yr")
+cmp$"yr:hed" <- a
+```
+
+```{r echo = -c(1:2), fig.cap = cap, fig.height = 7}
+cap <-
+    "Cubic root means for defoliation as function of each factor levels."
+cap <- fgn_("defol", cap)
+
+p1 <- segplot(tra ~ lwr + upr,
+              centers = fit,
+              data = cmp$tra,
+              draw = FALSE,
+              xlab = "Cubic root of defoliantion",
+              ylab = "Fungicides",
+              ann = sprintf("%0.2f %s",
+                            cmp$tra$fit,
+                            cmp$tra$cld)) +
+    layer(panel.text(x = centers[subscripts],
+                     y = z[subscripts],
+                     labels = ann[subscripts],
+                     pos = 3))
+
+p2 <- segplot(hed ~ lwr + upr | yr,
+              centers = fit,
+              data = cmp$"yr:hed",
+              draw = FALSE,
+              layout = c(1, NA),
+              xlab = "Cubic root of defoliantion",
+              ylab = "Hedging level",
+              as.table = TRUE,
+              ann = sprintf("%0.2f %s",
+                            cmp$"yr:hed"$fit,
+                            cmp$"yr:hed"$cld)) +
+    layer(panel.text(x = centers[subscripts],
+                     y = z[subscripts],
+                     labels = ann[subscripts],
+                     pos = 3))
+
+print(p1, position = c(0, 0.55, 1, 1), more = TRUE)
+print(p2, position = c(0, 0, 1, 0.55))
+```
+
+****
+# Session information
+
+```{r, echo=FALSE, results="hold"}
+cat(format(Sys.time(), format = "%A, %d de %B de %Y, %H:%M"),
+    "----------------------------------------", sep = "\n")
+sessionInfo()
+```
+
+<!------------------------------------------- -->
+[Paulo S. F. Lichtemberg]: http://lattes.cnpq.br/8132272273348880
+[Walmes M. Zeviani]: http://www.leg.ufpr.br/doku.php/pessoais:walmes
