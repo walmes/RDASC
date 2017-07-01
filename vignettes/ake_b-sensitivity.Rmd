@@ -51,8 +51,9 @@ sen <- ake_b$sensitivity
 # Divide diameters by 100 to convert to milimeters. Calculate mean
 # diameter (dm).
 sen <- within(sen, {
-    d1 <- d1/100
-    d2 <- d2/100
+    # 500 is the plug size.
+    d1 <- (d1 - 500)/100
+    d2 <- (d2 - 500)/100
     dm <- (d1 + d2)/2
     ar <- pi * (dm/2)^2
 })
@@ -112,8 +113,8 @@ xyplot(dm ~ dos | iso,
        type = c("p", "a"),
        strip = FALSE,
        as.table = TRUE,
-       xlab = "First diameter (mm)",
-       ylab = "Second diameter (mm)")
+       ylab = "Mean diameter (mm)",
+       xlab = "Fungicide dose")
 
 # Log-log scales.
 xyplot(dm ~ dos | iso,
@@ -123,8 +124,8 @@ xyplot(dm ~ dos | iso,
        type = c("p", "a"),
        strip = FALSE,
        as.table = TRUE,
-       xlab = "First diameter (mm)",
-       ylab = "Second diameter (mm)")
+       ylab = "log Mean diameter (mm)",
+       xlab = "log Fungicide dose")
 ```
 
 ```{r, fig.cap = cap, fig.show = "hold", echo = -(1:2), fig.height = 12}
@@ -140,8 +141,8 @@ xyplot(dm ~ dos^0.2 | iso,
        type = c("p", "a"),
        strip = FALSE,
        as.table = TRUE,
-       xlab = "First diameter (mm)",
-       ylab = "Second diameter (mm)")
+       ylab = "Mean diameter (mm)",
+       xlab = "5th root fungicide dose")
 ```
 
 `r fgl_("dm-x-dos")` (top) shows that doses are very skewed.
@@ -245,8 +246,11 @@ fitting <- function(x) {
     x <- na.omit(x)
     if (nrow(x) > 4) {
         n0 <- lm(dm ~ ns(doz, df = 3), data = x)
-        yr <- range(x$dm)
         yfit <- predict(n0, newdata = pred)
+        # n0 <- glm(dm + 0.01 ~ ns(doz, df = 3), data = x,
+        #           family = gaussian(link = log))
+        # yfit <- predict(n0, newdata = pred, type = "response")
+        # yr <- range(x$dm)
         return(cbind(xfit = pred$doz, yfit = yfit))
     } else {
         NULL
@@ -293,7 +297,19 @@ cbind(AUC = sum(is.na(ec$auc)),
 
 # Scatter plot matrix of estimated values.
 splom(ec[, -1], type = c("p", "smooth"), col.line = 2)
+```
+```{r, fig.cap = cap, echo = -(1:2)}
+cap <-
+"Area under the fitted curve as a function of the EC~50~ for those isolates where EC~50~ were estimated."
+cap <- fgn_("aux-vs-ec50", cap)
 
+xyplot(auc ~ ec50,
+       data = ec,
+       type = c("p", "smooth"),
+       ylab = "Area under the fitted curve",
+       xlab = expression("Estimated" ~ EC[50]))
+```
+```{r}
 # Correlation among variables.
 cor(ec[, -1], use = "complete")
 
@@ -309,6 +325,7 @@ cap <- fgn_("splines-fit", cap)
 
 # View the results.
 L <- split(ec, ec$iso)
+
 xyplot(dm ~ dos^0.2 | iso,
        data = sen,
        groups = fun,
@@ -318,12 +335,61 @@ xyplot(dm ~ dos^0.2 | iso,
        auto.key = list(columns = 3,
                        title = "In vitro fungicide",
                        cex.title = 1.1),
-       ylim = c(0, NA),
        xlab = "In vitro fungicide dose 5th root",
        ylab = "Mean diameter (mm)") +
     as.layer(xyplot(yfit ~ xfit | iso,
                     groups = fun,
                     data = res,
+                    type = "l")) +
+    layer({
+        with(L[[which.packet()]], {
+            cl <- trellis.par.get()$superpose.symbol$col[as.integer(fun)]
+            panel.segments(x0 = ec50,
+                           y0 = ev50,
+                           x1 = ec50,
+                           y1 = 0,
+                           col = "gray50")
+            panel.segments(x0 = ec50,
+                           y0 = ev50,
+                           x1 = 0,
+                           y1 = ev50,
+                           col = "gray50")
+            panel.points(x = ec50,
+                         y = ev50,
+                         pch = 19,
+                         cex = 0.6,
+                         col = cl)
+        })
+    })
+```
+
+```{r, fig.cap = cap, fig.show = "hold", echo = -(1:2)}
+cap <-
+"Mean diameter as function of fungicide dose 5th root for a random sample of isolates.  Solid line is the natural cubic spline fitted for each fungicide in each isolate. Gray straight line indicates the EC~50~ on each curve."
+cap <- fgn_("splines-fit-sample", cap)
+
+# Subseting.
+set.seed(123)
+i <- sample(levels(sen$iso), size = 40)
+i <- as.character(sort(as.integer(i)))
+L <- L[i]
+
+xyplot(dm ~ dos^0.2 | iso,
+       data = sen,
+       subset = iso %in% i,
+       groups = fun,
+       cex = 0.4,
+       strip = FALSE,
+       as.table = TRUE,
+       auto.key = list(columns = 3,
+                       title = "In vitro fungicide",
+                       cex.title = 1.1),
+       xlab = "In vitro fungicide dose 5th root",
+       ylab = "Mean diameter (mm)") +
+    as.layer(xyplot(yfit ~ xfit | iso,
+                    groups = fun,
+                    data = res,
+                    subset = iso %in% i,
                     type = "l")) +
     layer({
         with(L[[which.packet()]], {
