@@ -28,7 +28,7 @@ library(doBy)
 library(multcomp)
 library(wzRfun)
 ```
-```{r, eval = FALSE}
+```{r, eval = TRUE}
 library(RDASC)
 ```
 ```{r setup, include = FALSE}
@@ -494,8 +494,8 @@ i <- c("pop", "tra", "fun")
 L <- lapply(i,
        FUN = function(term){
            L <- LSmeans(m1, effect = term)
-           rownames(L$K) <- L$grid[, 1]
-           a <- apmc(L$K, m1, focus = term)
+           rownames(L$L) <- L$grid[, 1]
+           a <- apmc(L$L, m1, focus = term)
            names(a)[1] <- "level"
            a <- cbind(term = term, a)
            return(a)
@@ -566,14 +566,14 @@ res <- vector(mode = "list", length = 2)
 
 L <- LSmeans(m1, effect = c("pop", "tra"))
 g <- L$grid
-L <- by(L$K, L$grid$tra, as.matrix)
+L <- by(L$L, L$grid$tra, as.matrix)
 L <- lapply(L, "rownames<-", unique(g$pop))
 L <- lapply(L, apmc, model = m1, focus = "pop")
 res[[1]] <- ldply(L, .id = "tra")
 
 L <- LSmeans(m1, effect = c("pop", "fun"))
 g <- L$grid
-L <- by(L$K, L$grid$fun, as.matrix)
+L <- by(L$L, L$grid$fun, as.matrix)
 L <- lapply(L, "rownames<-", unique(g$pop))
 L <- lapply(L, apmc, model = m1, focus = "pop")
 res[[2]] <- ldply(L, .id = "fun")

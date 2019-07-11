@@ -29,7 +29,7 @@ library(lme4)
 library(lmerTest)
 library(wzRfun)
 ```
-```{r, eval = FALSE}
+```{r, eval = TRUE}
 library(RDASC)
 ```
 ```{r setup, include = FALSE}
@@ -95,20 +95,20 @@ anova(m0)
 ```
 
 ```{r}
-# Fake model just to use the LSmatrix().
+# Fake model just to use the LE_matrix().
 fake <- lm(nobars(formula(m0)), m0@frame)
 
 cmp <- list()
 
 # Main effect of fungicide.
-L <- LSmatrix(fake, effect = "tra")
+L <- LE_matrix(fake, effect = "tra")
 grid <- equallevels(attr(L, "grid"), da)
 rownames(L) <- grid[, 1]
 a <- apmc(X = L, model = m0, focus = "tra")
 cmp$tra <- a
 
 # Spliting the effect of head in each year.
-L <- LSmatrix(fake, effect = c("yr", "hed"))
+L <- LE_matrix(fake, effect = c("yr", "hed"))
 grid <- equallevels(attr(L, "grid"), da)
 L <- by(L, grid$yr, as.matrix)
 L <- lapply(L, "rownames<-", levels(grid$hed))
@@ -179,20 +179,20 @@ anova(m0)
 ```
 
 ```{r}
-# Fake model just to use the LSmatrix().
+# Fake model just to use the LE_matrix().
 fake <- lm(nobars(formula(m0)), m0@frame)
 
 cmp <- list()
 
 # Main effect of fungicide.
-L <- LSmatrix(fake, effect = "tra")
+L <- LE_matrix(fake, effect = "tra")
 grid <- equallevels(attr(L, "grid"), da)
 rownames(L) <- grid[, 1]
 a <- apmc(X = L, model = m0, focus = "tra")
 cmp$tra <- a
 
 # Spliting the effect of head in each year.
-L <- LSmatrix(fake, effect = c("yr", "hed"))
+L <- LE_matrix(fake, effect = c("yr", "hed"))
 grid <- equallevels(attr(L, "grid"), da)
 L <- by(L, grid$yr, as.matrix)
 L <- lapply(L, "rownames<-", levels(grid$hed))

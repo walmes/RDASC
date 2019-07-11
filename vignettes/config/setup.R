@@ -43,7 +43,7 @@ tbl_ <- function(label) tbn_(label, display = "cite")
 fgl_ <- function(label) fgn_(label, display = "cite")
 
 # Carrega o pacote.
-devtools::load_all()
+# devtools::load_all()
 
 # if (dir.exists("~/repos/wzRfun")) {
 #     devtools::load_all("~/repos/wzRfun")

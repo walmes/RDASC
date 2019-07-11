@@ -25,7 +25,7 @@ library(latticeExtra)
 library(doBy)
 library(multcomp)
 ```
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 library(RDASC)
 ```
 ```{r setup, include=FALSE}

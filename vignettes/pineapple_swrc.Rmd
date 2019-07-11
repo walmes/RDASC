@@ -27,7 +27,7 @@ pkg <- c("lattice",
          "multcomp")
 sapply(pkg, library, character.only = TRUE, logical.return = TRUE)
 ```
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 library(RDASC)
 ```
 ```{r setup, include=FALSE}
@@ -248,14 +248,14 @@ anova(m0)
 # Desdobramento.
 
 # Estimativas para as profundidades.
-Xm <- LSmatrix(m0, effect = "prof")
+Xm <- LE_matrix(m0, effect = "prof")
 rownames(Xm) <- levels(db$prof)
 g1 <- apmc(X = Xm, model = m0, focus = "prof")
 g1
 
 # Desdobrar gesso dentro de cobertura.
 LSmeans(m0, effect = c("gesso", "cober"))
-Xm <- LSmatrix(m0, effect = c("gesso", "cober"))
+Xm <- LE_matrix(m0, effect = c("gesso", "cober"))
 grid <- equallevels(attr(Xm, "grid"), db)
 
 L <- by(Xm, INDICES = grid$cober, FUN = as.matrix)
@@ -323,7 +323,7 @@ anova(m0)
 
 # Desdobrar prof dentro de varie.
 LSmeans(m0, effect = c("prof", "varie"))
-Xm <- LSmatrix(m0, effect = c("prof", "varie"))
+Xm <- LE_matrix(m0, effect = c("prof", "varie"))
 grid <- equallevels(attr(Xm, "grid"), db)
 
 L <- by(Xm, INDICES = grid$varie, FUN = as.matrix)
@@ -475,7 +475,7 @@ anova(m0)
 
 # Desdobrar prof dentro de varie.
 LSmeans(m0, effect = c("prof", "varie"))
-Xm <- LSmatrix(m0, effect = c("prof", "varie"))
+Xm <- LE_matrix(m0, effect = c("prof", "varie"))
 grid <- equallevels(attr(Xm, "grid"), db)
 
 L <- by(Xm, INDICES = grid$varie, FUN = as.matrix)
@@ -489,7 +489,7 @@ g1[, c("fit","lwr","upr")] <- exp(1/g1[, c("fit","lwr","upr")])
 
 # Desdobrar gesso dentro de cobertura.
 LSmeans(m0, effect = c("gesso", "cober"))
-Xm <- LSmatrix(m0, effect = c("gesso", "cober"))
+Xm <- LE_matrix(m0, effect = c("gesso", "cober"))
 grid <- equallevels(attr(Xm, "grid"), db)
 
 L <- by(Xm, INDICES = grid$cober, FUN = as.matrix)
@@ -573,7 +573,7 @@ anova(m0)
 
 # Desdobrar prof dentro de varie.
 LSmeans(m0, effect = c("prof", "varie"))
-Xm <- LSmatrix(m0, effect = c("prof", "varie"))
+Xm <- LE_matrix(m0, effect = c("prof", "varie"))
 grid <- equallevels(attr(Xm, "grid"), db)
 
 L <- by(Xm, INDICES = grid$varie, FUN = as.matrix)
@@ -587,7 +587,7 @@ g1 <- equallevels(g1, db)
 
 # Desdobrar gesso dentro de cobertura.
 LSmeans(m0, effect = c("gesso", "cober"))
-Xm <- LSmatrix(m0, effect = c("gesso", "cober"))
+Xm <- LE_matrix(m0, effect = c("gesso", "cober"))
 grid <- equallevels(attr(Xm, "grid"), db)
 
 L <- by(Xm, INDICES = grid$cober, FUN = as.matrix)

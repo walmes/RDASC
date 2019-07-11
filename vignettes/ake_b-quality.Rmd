@@ -29,7 +29,7 @@ library(lme4)
 library(lmerTest)
 library(wzRfun)
 ```
-```{r, eval = FALSE}
+```{r, eval = TRUE}
 library(RDASC)
 ```
 ```{r setup, include = FALSE}
@@ -267,7 +267,7 @@ cmp <- list()
 lsm <- LSmeans(m15, effect = "hed")
 grid <- equallevels(lsm$grid, da)
 
-L <- lsm$K
+L <- lsm$L
 rownames(L) <- grid[, 1]
 
 cmp$hed <-
@@ -278,7 +278,7 @@ cmp$hed <-
 lsm <- LSmeans(m15, effect = "tra")
 grid <- equallevels(lsm$grid, da)
 
-L <- lsm$K
+L <- lsm$L
 rownames(L) <- grid[, 1]
 
 cmp$tra <-

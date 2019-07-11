@@ -24,7 +24,7 @@ library(plyr)
 library(rootSolve)  # gradient().
 library(wzRfun)     # panel.cbH().
 ```
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 library(RDASC)
 ```
 ```{r setup, include=FALSE}
