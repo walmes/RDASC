@@ -19,3 +19,9 @@ ci-c3sl.R
 Rplots.pdf
 README.*
 LICENSE
+^RDASC_.*.tar.gz$
+^RDASC_.*.zip$
+^_deploy.sh$
+^.#_deploy.sh#
+^doc$
+^Meta$
