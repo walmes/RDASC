@@ -6,7 +6,7 @@ author: >
 date: "`r Sys.Date()`"
 vignette: >
   %\VignetteIndexEntry{Doses de Nitrogênio e Potássio para Cana-de-açúcar em Diferentes Sistemas de Manejo no Estado do Paraná}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{knitr::knitr}
   %\VignetteEncoding{UTF-8}
 ---
 

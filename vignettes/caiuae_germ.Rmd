@@ -8,7 +8,7 @@ bibliography: config/bibliography.bib
 csl: config/abnt_ufpr_2011-mendeley.csl
 vignette: >
   %\VignetteIndexEntry{Germination and Vigor of caiaué seeds: American oil palm tree}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{knitr::knitr}
   %\VignetteEncoding{UTF-8}
 ---
 

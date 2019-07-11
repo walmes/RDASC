@@ -9,7 +9,7 @@ author: >
 date: "`r Sys.Date()`"
 vignette: >
   %\VignetteIndexEntry{Effect of fungicide sprays programs and pistachio hedging on sensitivity of Alternaria alternata}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{knitr::knitr}
   %\VignetteEncoding{UTF-8}
 ---
 

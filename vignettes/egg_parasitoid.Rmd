@@ -6,7 +6,7 @@ author: >
 date: "`r Sys.Date()`"
 vignette: >
   %\VignetteIndexEntry{Efeito de Inseticidas no Parasitismo de Trichogramma em Ovos de Lagartas da Soja}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{knitr::knitr}
   %\VignetteEncoding{UTF-8}
 ---
 

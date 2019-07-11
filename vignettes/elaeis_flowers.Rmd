@@ -7,7 +7,7 @@ author: >
 date: "`r Sys.Date()`"
 vignette: >
   %\VignetteIndexEntry{Número de Flores de Dendezeiro}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{knitr::knitr}
   %\VignetteEncoding{UTF-8}
 ---
 

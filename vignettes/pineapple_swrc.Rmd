@@ -6,7 +6,7 @@ author: >
 date: "`r Sys.Date()`"
 vignette: >
   %\VignetteIndexEntry{Curva de retenção de Água na Cultura do Abacaxizeiro em Função da Cobertura do Solo e Aplicação de Gesso}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{knitr::knitr}
   %\VignetteEncoding{UTF-8}
 ---
 
