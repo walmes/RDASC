@@ -31,7 +31,7 @@ print(inpack[order(inpack[, "Package"]), c("Package", "Version")],
 #--------------------------------------------
 # Load package.
 
-devtools::load_all()
+load_all()
 
 pkg <- basename(getwd())
 # ls(sprintf("package:%s", pkg))
@@ -52,9 +52,13 @@ check_man()
 #--------------------------------------------
 # Creates the vignettes.
 
+dir.create("./inst/doc")
+
 if (length(list.files("./vignettes"))) {
     build_vignettes(dependencies = FALSE)
 }
+
+system("cp -r ./doc ./inst/")
 
 #--------------------------------------------
 # Check the package.
@@ -81,9 +85,9 @@ library(pkgdown)
 # build_articles()
 build_site()
 
-# Move stylesheet and mathjax files.
-file.copy(from = c("./vignettes/config/pkgdown-style.css",
-                   "./vignettes/config/MathJax.html"),
+# ATTENTION: `pkgdown-style.css` is
+# refered in `./inst/templates/head.html`.
+file.copy(from = c("./vignettes/config/pkgdown-style.css"),
           to = "./docs",
           overwrite = TRUE)
 
@@ -107,10 +111,11 @@ install(build_vignettes = FALSE,
 #--------------------------------------------
 # Transfer to server public_html.
 
-# IP address and port (you can define these credential in .Rprofile).
+# Port and IP address (you can define these credential in .Rprofile).
 # credent <- scan(n = 2, what = "character")
 # cmd <- sprintf(paste("rsync -avzp ./docs/* --progress",
 #                      '--rsh="ssh -p%s"',
 #                      '"%s:~/public_html/pacotes/RDASC"'),
-#                credent[2], credent[1])
+#                credent[1], credent[2])
+# cat(cmd, "\n")
 # system(cmd)

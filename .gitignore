@@ -17,8 +17,8 @@ playground.R
 .httr-oauth
 *Rcheck/
 docs/
-doc/
-Meta/
+doc
+Meta
 inst/doc/
 !inst/doc/*.html
 vignettes/*.html
