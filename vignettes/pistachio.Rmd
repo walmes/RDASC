@@ -1,0 +1,856 @@
+---
+title: "AUMGC for *Colletotrichum fioriniae* and *Colletotrichum karstii*"
+author: "Paulo Lichtemberg & Walmes Zeviani"
+date: "31 de Janeiro de 2020"
+output:
+  html_document:
+    theme: cosmo
+    highlight: haddock
+    toc: true
+---
+
+# Session definitions
+
+```{r, message = FALSE, results = "hide"}
+# List of packages.
+pkg <- c("tidyverse", "agricolae", "emmeans", "segmented")
+
+# Loads each package.
+sapply(pkg, FUN = library, character.only = TRUE, logical.return = TRUE)
+```
+
+```{r, include = FALSE}
+devtools::load_all()
+```
+
+# Area under the micelial growth curve
+
+## Exploratory data analysis
+
+```{r}
+# Prepare table of data.
+ogt <- as_tibble(RDASC::pistachio_anthracnose$ogrotem)
+ogt$exp <- factor(ogt$exp)
+attr(ogt, "spec") <- NULL
+str(ogt)
+
+# Get the mean diameter.
+ogt$diameter <- (ogt$mm1 + ogt$mm2)/2
+
+# Curves for each isolate according to experimental conditions.
+ggplot(data = ogt,
+       mapping = aes(x = day,
+                     y = diameter,
+                     color = iso)) +
+    facet_grid(facets = exp ~ tem) +
+    geom_point() +
+    stat_summary(geom = "line", fun.y = "mean") +
+    labs(x = "Days",
+         y = "Diameter (mm)",
+         color = "Isolate")
+
+# Loads a function to calculate area under a curve by trapezoidal
+# method.
+source("https://raw.githubusercontent.com/walmes/wzRfun/master/R/auc.R")
+args(auc)
+body(auc)
+
+# Frequency tables.
+xtabs(~iso + spp, data = ogt)
+ftable(xtabs(~exp + tem + iso, data = ogt))
+
+# AUC by each experimental unit = exp > spp > iso > tem > rep.
+aumgc <- ogt %>%
+    group_by(exp, spp, iso, tem, rep) %>%
+    summarise(auc = auc(time = day, resp = diameter)) %>%
+    ungroup()
+aumgc
+
+# Convert come experimental controled variables to factor.
+aumgc <- aumgc %>%
+    mutate_at(vars(exp, spp, iso, rep), factor)
+str(aumgc)
+
+# Visualize.
+ggplot(data = aumgc,
+       mapping = aes(x = tem, y = auc, color = exp)) +
+    facet_wrap(facets = ~iso) +
+    geom_point() +
+    stat_summary(geom = "line", fun.y = "mean") +
+    labs(x = "Temperature",
+         y = "AUC",
+         color = "Experiment")
+
+# Removes outlier.
+aumgc[with(aumgc,
+           iso == "12D46" &
+           exp == 3 &
+           tem == 25 &
+           auc < 50), ]$auc <- NA
+```
+
+## Optimal temperature for each isolate
+
+  * `exp`: represents the contour conditions of each experiment, so it
+    represents the blocking factor.
+  * `iso`: is the effect of isolate.
+  * `rep`: is each independent replication of experiment $\times$
+    isolate $\times$ temperature. Response could be averaged across
+    replications.
+
+```{r}
+# Uses a "naive" model (in terms of variance components) to check the
+# model assumptions.
+
+# Averages the AUC.
+aumgcm <- aumgc %>%
+    group_by(exp, iso, tem) %>%
+    summarise(aucm = mean(auc, na.rm = TRUE))
+
+# Visualize.
+ggplot(data = aumgcm,
+       mapping = aes(x = tem, y = aucm, color = exp)) +
+    facet_wrap(facets = ~iso) +
+    geom_point() +
+    geom_line() +
+    labs(x = "Temperature",
+         y = "AUC",
+         color = "Experiment")
+
+# Model fitting.
+m0 <- lm(aucm ~ exp + iso * factor(tem),
+         data = aumgcm)
+
+# Residual plots.
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+# NOTE: no strong evidence against model assumptions.
+```
+
+## Optimal temperature estimation
+
+Estimation of optimal temperature is done for each experimental
+condition: experiment $\times$ isolate.  After estimation, a model for
+hyphotesis on equality of the optimal values will be employed.
+
+```{r}
+# Each experimental cell.
+gg <- ggplot(data = aumgcm,
+       mapping = aes(x = tem, y = aucm)) +
+    facet_grid(facets = exp ~ iso) +
+    geom_point() +
+    expand_limits(y = c(0, NA)) +
+    geom_hline(yintercept = 25, linetype = 3) +
+    labs(x = "Temperature",
+         y = "AUC")
+
+gg +
+    geom_smooth(method = "lm",
+                formula = y ~ poly(x, degree = 4),
+                se = FALSE)
+
+
+# ATTENTION FIXME: the values of diameter must be subtracted from the
+# plug initial diameter? Is 25 mm?
+```
+
+A 4 degree polynomial will be used to fit the (mean) AUC as a function
+of temperature.  After fitting, the optimal temperature will be
+determined by a numerical optimation method.
+
+```{r}
+#-----------------------------------------------------------------------
+# Polynomial approach.
+
+# Function that fits a model equation to data and determine the optimal
+# temperature.
+fit_poly <- function(data,
+                         formula = aucm ~ poly(tem, degree = 4),
+                         interval = c(10, 35),
+                         maximum = TRUE) {
+    m0 <- lm(formula = formula, data = data)
+    pred <- function(x) predict(m0, newdata = list(tem = x))
+    t_opt <- optimise(f = pred,
+                      interval = interval,
+                      maximum = maximum)
+    return(data.frame(t_opt = t_opt$maximum,
+                      sqr = deviance(m0),
+                      ll = logLik(m0)))
+}
+
+# # Testing.
+# fit_poly(data = aumgcm[with(aumgcm, iso == "11J23" & exp == "1"),
+#                        c("aucm", "tem" )])
+
+#-----------------------------------------------------------------------
+# Bilinear approach.
+
+fit_bilinear <- function(data,
+                         start = list(b0 = -50,
+                                      b1 = 8,
+                                      xk = 26,
+                                      b2 = -17)) {
+    # Uses `nls()` function.
+    n0 <- nls(aucm ~ b0 +
+                  (b1 * tem) * (tem <= xk) +
+                  (b1 * xk + b2 * (tem - xk)) * (tem > xk),
+              start = start,
+              data = data)
+    return(data.frame(t_opt = coef(n0)["xk"],
+                      sqr = deviance(n0),
+                      ll = logLik(n0)))
+}
+
+# fit_tem_bilinear <- function(data) {
+#     # Uses `segmented` package.
+#     m0 <- lm(formula = aucm ~ tem, data = data)
+#     s0 <- segmented(m0, seg.Z = ~tem, psi = 26)
+#     return(data.frame(t_opt = s0$psi[1, "Est."],
+#                       sqr = deviance(s0),
+#                       ll = logLik(s0)))
+# }
+
+# # Testing.
+# fit_bilinear(data = aumgcm[with(aumgcm, iso == "11J23" & exp == "2"), ])
+
+#-----------------------------------------------------------------------
+# Fits for each experimental cell.
+
+temps <- aumgcm %>%
+    group_by(iso, exp) %>%
+    summarise(topt_p = list(
+                  fit_poly(data = data.frame(aucm, tem))),
+              topt_b = list(
+                  fit_bilinear(data = data.frame(aucm, tem)))) %>%
+    ungroup()
+
+temps <- temps %>%
+    gather(key = "approach", value = "measures", topt_p, topt_b) %>%
+    unnest()
+
+# Which approach has the smallest deviance (best fit)?
+ggplot(temps,
+       mapping = aes(x = approach,
+                     y = sqr,
+                     color = exp,
+                     group = exp)) +
+    facet_wrap(facets = ~iso) +
+    geom_point() +
+    geom_line()
+
+# What are the optimal temperature values by each approach?
+ggplot(temps,
+       mapping = aes(x = approach,
+                     y = t_opt,
+                     color = exp,
+                     group = exp)) +
+    facet_wrap(facets = ~iso) +
+    geom_point() +
+    geom_line()
+
+# See the results for the polynomial approach.
+gg +
+    geom_smooth(method = "lm",
+                formula = y ~ poly(x, degree = 4),
+                se = FALSE,
+                color = "purple",
+                size = 0.6) +
+    geom_vline(data = filter(temps, approach == "topt_p"),
+               mapping = aes(xintercept = t_opt),
+               color = "purple",
+               linetype = 2)
+
+# To configure `nls()` call inside `geom_smooth()`.
+nls_args <- list(formula = y ~ b0 +
+                     (b1 * x) * (x <= xk) +
+                     (b1 * xk + b2 * (x - xk)) * (x > xk),
+                 start = list(b0 = -50,
+                              b1 = 8.5,
+                              xk = 26,
+                              b2 = -16))
+
+gg +
+    geom_smooth(method = "nls",
+                method.args = nls_args,
+                se = FALSE,
+                color = "purple",
+                size = 0.6) +
+    geom_vline(data = filter(temps, approach == "topt_b"),
+               mapping = aes(xintercept = t_opt),
+               color = "purple",
+               linetype = 2)
+```
+
+## Isolate comparison
+
+```{r}
+# Filter by the chosen approach.
+da <- temps %>%
+    filter(approach == "topt_p") %>%
+    select(iso, exp, t_opt)
+
+# Fit the model according to the experiment layout.
+m0 <- lm(t_opt ~ exp + iso, data = da)
+
+# Residual plots.
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+# ANOVA table.
+anova(m0)
+
+# Tukey HSD test on isolate means.
+tk <- HSD.test(m0, trt = "iso", group = TRUE, console = FALSE)
+tk <- tk$groups %>%
+    rownames_to_column() %>%
+    rename("iso" = "rowname")
+tk
+
+# Least squares means.
+lsm <- emmeans(m0, specs = "iso")
+lsm <- print(lsm) %>%
+    mutate(iso = as.character(iso))
+str(lsm)
+
+# Merge these two tables.
+tb_means <- full_join(x = lsm, y = tk, by = "iso")
+tb_means
+```
+
+```{r, fig.height = 3.5}
+# Segment plot displaying means with confidence interval.
+ggplot(data = tb_means,
+       mapping = aes(y = fct_reorder(iso, emmean), x = emmean)) +
+    geom_point() +
+    geom_errorbarh(mapping = aes(xmin = lower.CL, xmax = upper.CL),
+                  height = 0.1) +
+    geom_text(mapping = aes(label = sprintf("%0.1f%s", emmean, groups)),
+              vjust = 0, nudge_y = 0.10) +
+    labs(y = "Isolate",
+         x = expression("Temperature" ~ (degree * C)))
+```
+
+# Sporulation capability
+
+## Exploratory data analysis
+
+```{r}
+# Prepare table of data.
+spo <- as_tibble(RDASC::pistachio_anthracnose$spo_vt)
+spo$exp <- factor(spo$exp)
+attr(spo, "spec") <- NULL
+str(spo)
+
+# Summaries.
+summary(spo)
+
+# Table frequency.
+xtabs(~spp + iso, data = spo)
+xtabs(~iso + cv, data = spo)
+
+# Creating the context or offset variable for the count (spo).
+spo$offset <- with(spo, slice *
+                        c(16, 4)[match(index, c(160000, 10000))])
+
+# Creates the variable concentration.
+# Numbers correspond to 1000 in slide and 16 in cells.
+spo$con <- with(spo, 1000 * 16 * spo/offset)
+
+ggplot(data = spo,
+       mapping = aes(x = tem, y = con, color = iso)) +
+    facet_grid(facets = exp ~ cv) +
+    geom_jitter(width = 0.5) +
+    stat_summary(geom = "line", fun.y = "mean") +
+    scale_y_log10()
+```
+
+## Model fitting
+
+Data were transform to log scale to avoid violations in model
+assumption.
+
+```{r}
+# Convert from numerical to factor.
+spo$tem <- factor(spo$tem)
+
+# Fit the model.
+# m0 <- lm(con ~ exp + iso * cv * tem, data = spo)
+# MASS::boxcox(m0)
+m0 <- lm(log10(con) ~ exp + iso * cv * tem, data = spo)
+
+# Check for any violation.
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+# Anova table.
+anova(m0)
+
+# Update model dropping no relevant experimental terms.
+m1 <- update(m0, . ~ exp + iso)
+anova(m1, m0)
+
+# Gets the estimated marginal means for isolates.
+emm <- emmeans(m1, specs = ~iso)
+emm %>% as.data.frame()
+
+# Values in the response scale.
+tb_means <- multcomp::cld(emm) %>%
+    as.data.frame() %>%
+    mutate_at(c("emmean", "lower.CL", "upper.CL"), exp)
+tb_means$cld <- c("b", "a")
+tb_means
+```
+
+```{r, fig.height = 2}
+# Results.
+ggplot(data = tb_means,
+       mapping = aes(y = iso, x = emmean)) +
+    geom_point() +
+    geom_errorbarh(mapping = aes(xmin = lower.CL, xmax = upper.CL),
+                  height = 0.1) +
+    geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
+              vjust = 0,
+              nudge_y = 0.05,
+              show.legend = FALSE) +
+    labs(x = "Number of spores",
+         # x = expression(Log[10] ~ "of sporulation"),
+         y = "Isolates")
+```
+
+# Conidia characterization
+
+## Exploratory data analysis
+
+```{r}
+cs <- as_tibble(RDASC::pistachio_anthracnose$cs)
+cs$exp <- factor(cs$exp)
+attr(cs, "spec") <- NULL
+str(cs)
+
+summary(cs)
+
+# Curves for each isolate according to experimental conditions.
+ggplot(data = cs,
+       mapping = aes(x = len,
+                     y = wid,
+                     color = kare)) +
+    facet_wrap(facets = ~exp) +
+    geom_point()
+
+# Find the convex hull of the points being plotted.
+cs_hull <- cs %>%
+    group_by(exp, kare) %>%
+    slice(chull(len, wid))
+
+ggplot(data = cs,
+       mapping = aes(x = len,
+                     y = wid,
+                     color = kare)) +
+    facet_wrap(facets = ~exp) +
+    geom_polygon(data = cs_hull, alpha = 0.1) +
+    geom_point() +
+    labs(x = expression("Conidia length" ~ (mu * m)),
+         y = expression("Conidia width" ~ (mu * m)))
+
+ggplot(data = cs,
+       mapping = aes(x = len,
+                     color = kare)) +
+    facet_wrap(facets = ~exp) +
+    geom_density()
+
+ggplot(data = cs,
+       mapping = aes(x = wid,
+                     color = kare)) +
+    facet_wrap(facets = ~exp) +
+    geom_density()
+
+ggplot(data = cs,
+       mapping = aes(x = vol,
+                     color = kare)) +
+    facet_wrap(facets = ~exp) +
+    geom_density()
+
+cs %>%
+    gather(key = "variable", value = "value", len, wid, vol) %>%
+    group_by(variable) %>%
+    mutate(value = scale(value)) %>%
+    ggplot(mapping = aes(x = value,
+                         color = kare)) +
+    facet_grid(facets = exp ~ variable, scales = "free") +
+    geom_density() +
+    geom_rug()
+
+cs %>%
+    gather(key = "variable", value = "value", len, wid, vol) %>%
+    group_by(variable) %>%
+    mutate(value = scale(value)) %>%
+    ggplot(mapping = aes(x = value,
+                         color = kare)) +
+    facet_grid(facets = exp ~ variable, scales = "free") +
+    stat_ecdf() +
+    geom_rug()
+```
+
+## Conidia length
+
+```{r}
+xtabs(~kare + exp, data = cs)
+
+m0 <- lm(len ~ exp * kare, data = cs)
+
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+anova(m0)
+
+# DANGER: Tukey test is based on geometric mean of the number of
+# replicates. Since the number of replications are very enequal, this
+# aproximation is not suitable.
+tt <- HSD.test(m0, "kare", console = FALSE)
+tt$groups
+
+emm <- emmeans(m0, specs = ~kare)
+tb_means <- multcomp::cld(emm) %>%
+    as.data.frame()
+tb_means
+
+tb_means$cld <- c("a", "b")[c(2, 2, 2, 2, 2, 2, 1)]
+
+# Segment plot displaying means with confidence interval.
+ggplot(data = tb_means,
+       mapping = aes(y = fct_reorder(kare, emmean), x = emmean)) +
+    geom_point() +
+    geom_errorbarh(mapping = aes(xmin = lower.CL, xmax = upper.CL),
+                  height = 0.1) +
+    geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
+              vjust = 0, nudge_y = 0.05) +
+    labs(x = expression("Conidia length" ~ (mu * m)),
+         y = "Isolates")
+```
+
+## Conidia width
+
+```{r}
+m0 <- lm(wid ~ exp * kare, data = cs)
+
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+anova(m0)
+
+# DANGER: Tukey test is based on geometric mean of the number of
+# replicates. Since the number of replications are veru enequal, this
+# aproximation is not suitable.
+# tt <- HSD.test(m0, "kare", console = TRUE)
+# tt$groups
+
+emm <- emmeans(m0, specs = ~kare | exp)
+emm
+
+m1 <- aov(wid ~ exp + kare + Error(exp/kare), data = cs)
+summary(m1)
+
+emmeans(m1, specs = ~kare)
+
+
+grid <- attr(emm, "grid")
+L <- attr(emm, "linfct")
+rownames(L) <- grid$kare
+
+tb_means <- rbind(wzRfun::apmc(L[grid$exp == "1", ], m0, focus = "kare"),
+                  wzRfun::apmc(L[grid$exp == "2", ], m0, focus = "kare"))
+
+tb_means <- cbind(rbind(filter(grid, exp == "1"),
+                        filter(grid, exp == "2")),
+                  select(tb_means, -kare))
+tb_means
+
+# Segment plot displaying means with confidence interval.
+ggplot(data = tb_means,
+       mapping = aes(y = fct_reorder(kare, fit), x = fit)) +
+    facet_wrap(facets = ~exp) +
+    geom_point() +
+    geom_errorbarh(mapping = aes(xmin = lwr, xmax = upr),
+                  height = 0.1) +
+    geom_text(mapping = aes(label = sprintf("%0.2f%s", fit, cld)),
+              vjust = 0, nudge_y = 0.05) +
+    labs(x = expression("Conidia width" ~ (mu * m)),
+         y = "Isolates")
+```
+
+## Conidia volume
+
+```{r}
+m0 <- lm(vol^(1/3) ~ exp * kare, data = cs)
+
+# MASS::boxcox(m0)
+
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+anova(m0)
+
+# DANGER: Tukey test is based on geometric mean of the number of
+# replicates. Since the number of replications are veru enequal, this
+# aproximation is not suitable.
+# tt <- HSD.test(m0, "kare", console = TRUE)
+# tt$groups
+
+emm <- emmeans(m0, specs = ~kare + exp)
+grid <- attr(emm, "grid")
+L <- attr(emm, "linfct")
+rownames(L) <- grid$kare
+
+tb_means <- rbind(wzRfun::apmc(L[grid$exp == "1", ], m0, focus = "kare"),
+                  wzRfun::apmc(L[grid$exp == "2", ], m0, focus = "kare"))
+
+tb_means <- cbind(rbind(filter(grid, exp == "1"),
+                        filter(grid, exp == "2")),
+                  select(tb_means, -kare))
+tb_means
+
+# Segment plot displaying means with confidence interval.
+ggplot(data = tb_means,
+       mapping = aes(y = fct_reorder(kare, fit), x = fit)) +
+    facet_wrap(facets = ~exp) +
+    geom_point() +
+    geom_errorbarh(mapping = aes(xmin = lwr, xmax = upr),
+                  height = 0.1) +
+    geom_text(mapping = aes(label = sprintf("%0.2f%s", fit, cld)),
+              vjust = 0, nudge_y = 0.05) +
+    labs(x = expression("Cubic root of conidia volume" ~ (mu * m)),
+         y = "Isolates")
+```
+
+## Principal components (bonus)
+
+```{r, eval = FALSE}
+library(factoextra)
+
+fit <- prcomp(cs[, c("len", "wid")], scale = TRUE)
+
+fviz_pca_biplot(fit,
+                col.ind = cs$kare,
+                col.var = "black",
+                addEllipses = TRUE,
+                ellipse.type = "confidence",
+                ellipse.level = 0.95)
+```
+
+# Germination
+
+## Exploratory data analysis
+
+```{r}
+germ <- as_tibble(RDASC::pistachio_anthracnose$ogertem)
+germ$exp <- factor(germ$exp)
+germ$tim <- factor(germ$tim)
+attr(germ, "spec") <- NULL
+str(germ)
+
+summary(germ)
+
+# Curves for each isolate according to experimental conditions.
+ggplot(data = germ,
+       mapping = aes(x = tem,
+                     y = ger/of,
+                     color = tim)) +
+    facet_grid(facets = exp ~ iso) +
+    geom_point() +
+    stat_summary(geom = "line", fun.y = "mean")
+
+ggplot(data = filter(germ, tem > 10),
+       mapping = aes(x = tem,
+                     y = ger/of,
+                     color = tim)) +
+    facet_grid(facets = exp ~ iso) +
+    geom_jitter(width = 1, height = 0) +
+    # stat_summary(geom = "line", fun.y = "mean") +
+    geom_smooth(method = "glm",
+                formula = y ~ poly(x, degree = 3),
+                # formula = y ~ splines::bs(x, df = 2, degree = 3),
+                # formula = y ~ splines::ns(x, df = 3),
+                se = FALSE,
+                method.args = list(family = "quasibinomial"))
+```
+
+## Fit curves for each experimental point
+
+```{r}
+# Function that fits a model equation to data and determine the optimal
+# temperature.
+
+fit_tem_poly <- function(data) {
+    m0 <- glm(formula = cbind(ger, of - ger) ~ poly(tem, degree = 3),
+              data = data,
+              family = quasibinomial)
+    pval <- tail(summary(m0)$coeff[, "Pr(>|t|)"], n = 1)
+    if (pval > 0.05) {
+        update(m0, . ~ poly(tem, degree = 2))
+    }
+    pred <- function(x) predict(m0,
+                                newdata = list(tem = x),
+                                type = "response")
+    t_opt <- optimise(f = pred,
+                      interval = c(10, 35),
+                      maximum = TRUE)
+    return(data.frame(temp_opt = t_opt$maximum,
+                      germ_opt = t_opt$objective,
+                      n_par = length(coef(m0)),
+                      deviance = deviance(m0)))
+}
+
+data = germ[with(germ, iso == "11J23" & exp == "1" & tim == "6" & tem > 10), ]
+
+# Testing.
+fit_tem_poly(data = germ[with(germ, iso == "11J23" & exp == "1" & tim == "6" & tem > 10), ])
+#
+
+temp_opt <- germ %>%
+    filter(tem > 10 & !(tim == "12" & exp == "2" & iso == "3G23")) %>%
+    group_by(exp, iso, tim) %>%
+    do({
+        fit_tem_poly(.)
+    }) %>%
+    as.data.frame()
+
+ggplot(data = temp_opt,
+       mapping = aes(x = temp_opt, y = germ_opt, color = tim)) +
+    facet_wrap(facets = ~iso) +
+    geom_point()
+
+ggplot(data = temp_opt,
+       mapping = aes(x = iso, y = temp_opt, color = tim, group = tim)) +
+    geom_point() +
+    stat_summary(geom = "line", fun.y = "mean") +
+    labs(y = "Optimal temperature for germination",
+         x = "Isolates")
+
+ggplot(data = temp_opt,
+       mapping = aes(x = iso, y = germ_opt, color = tim, group = tim)) +
+    geom_point() +
+    stat_summary(geom = "line", fun.y = "mean") +
+    labs(y = "Maximum germination",
+         x = "Isolates")
+```
+
+## Isolate comparison
+
+```{r}
+m0 <- lm(temp_opt ~ exp + iso * tim, data = temp_opt)
+
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+anova(m0)
+
+emm <- emmeans(m0, specs = ~iso)
+L <- attr(emm, "linfct")
+rownames(L) <- levels(germ$iso)
+
+tb_means <- wzRfun::apmc(L, m0, focus = "iso")
+tb_means
+
+# Segment plot displaying means with confidence interval.
+ggplot(data = tb_means,
+       mapping = aes(y = fct_reorder(iso, fit), x = fit)) +
+    geom_point() +
+    geom_errorbarh(mapping = aes(xmin = lwr, xmax = upr),
+                  height = 0.1) +
+    geom_text(mapping = aes(label = sprintf("%0.2f%s", fit, cld)),
+              vjust = 0,
+              nudge_y = 0.05,
+              show.legend = FALSE) +
+    labs(x = expression("Optimal temperature for germination" ~ (""^degree * C)),
+         y = "Isolates")
+
+# Analysis on the logit scale of the estimated germination.
+temp_opt$logit_germ_opt <- binomial()$linkfun(temp_opt$germ_opt)
+m0 <- lm(logit_germ_opt ~ exp + iso * tim, data = temp_opt[-8, ])
+
+# m0 <- lm(germ_opt ~ exp + iso, data = temp_opt)
+
+# MASS::boxcox(m0)
+
+par(mfrow = c(2, 2))
+plot(m0)
+layout(1)
+
+anova(m0)
+
+m0 <- lm(logit_germ_opt ~ exp + iso + tim, data = temp_opt[-8, ])
+
+emm <- emmeans(m0, specs = ~tim)
+L <- attr(emm, "linfct")
+rownames(L) <- levels(germ$tim)
+
+tb_means <- wzRfun::apmc(L, m0, focus = "tim") %>%
+    mutate_at(c("fit", "lwr", "upr"), binomial()$linkinv)
+tb_means
+
+emm <- emmeans(m0, specs = ~iso)
+L <- attr(emm, "linfct")
+rownames(L) <- levels(germ$iso)
+
+tb_means <- wzRfun::apmc(L, m0, focus = "iso") %>%
+    mutate_at(c("fit", "lwr", "upr"), binomial()$linkinv)
+tb_means
+
+# ATTENTION: these values of germination is a mean of the predicted
+# germination for the levels of tim. So, interpret them with caution. In
+# fact, what is relevant is the contrast between isolates that represent
+# the isolate effect.
+
+# Segment plot displaying means with confidence interval.
+ggplot(data = tb_means,
+       mapping = aes(y = fct_reorder(iso, fit), x = fit)) +
+    geom_point() +
+    geom_errorbarh(mapping = aes(xmin = lwr, xmax = upr),
+                  height = 0.1) +
+    geom_text(mapping = aes(label = sprintf("%0.2f%s", fit, cld)),
+              vjust = 0,
+              nudge_y = 0.05,
+              show.legend = FALSE) +
+    labs(x = expression("Maximum germination"),
+         y = "Isolates")
+
+# Get the means for all combinations despite the effects are additive.
+emm <- emmeans(m0, specs = ~iso + tim) %>%
+    as.data.frame() %>%
+    rename(fit = "emmean", lwr = "lower.CL", upr = "upper.CL") %>%
+    mutate_at(c("fit", "lwr", "upr"), binomial()$linkinv)
+
+pd <- position_dodge(0.1)
+ggplot(data = emm,
+       mapping = aes(x = fct_reorder(iso, fit),
+                     y = fit,
+                     color = tim,
+                     group = tim)) +
+    geom_point(position = pd) +
+    geom_errorbar(mapping = aes(ymin = lwr, ymax = upr),
+                  position = pd,
+                  width = 0.1) +
+    geom_text(mapping = aes(label = sprintf("%0.2f", fit)),
+              position = pd,
+              hjust = -0.2,
+              show.legend = FALSE) +
+    labs(y = expression("Maximum germination"),
+         x = "Isolates",
+         color = "Incubation\nperiod (h)")
+```
+
+# Apressory formation
+
+# Patogenicity in vivo
+
+# Time of sensibility
+
+# Weather data log
