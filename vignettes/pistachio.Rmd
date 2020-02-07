@@ -13,7 +13,7 @@ output:
 
 ```{r, message = FALSE, results = "hide"}
 # List of packages.
-pkg <- c("tidyverse", "agricolae", "emmeans", "lme4")
+pkg <- c("tidyverse", "agricolae", "emmeans", "lme4", "lmerTest")
 
 # Loads each package.
 sapply(pkg, FUN = library, character.only = TRUE, logical.return = TRUE)
@@ -779,7 +779,7 @@ ggplot(data = emm,
          color = "Incubation\nperiod (h)")
 ```
 
-# Apressory formation
+# Appressory formation
 
 ```{r}
 str(RDASC::pistachio_anthracnose$af)
@@ -826,7 +826,7 @@ gg_af <- ggplot(data = tb_means,
               vjust = 0,
               nudge_y = 0.05,
               show.legend = FALSE) +
-    labs(x = expression("Appressory germination"),
+    labs(x = expression("Appressory formation"),
          y = "Isolates")
 gg_af
 ```
@@ -836,13 +836,16 @@ gg_af
 ```{r}
 # ATTENTION: new data from 2019 are available.
 vv <- RDASC::pistachio_anthracnose$pato_vv
+vv$cv[vv$cv == "RA"] <- "Red Aleppo"
+vv$cv <- droplevels(vv$cv)
 str(vv)
 
 # Incomplete crossed factorial design. But it is a complete factorial
 # design in each year.
 ftable(xtabs(~cv + spp + yr, data = vv))
 
-# Each experimental codition has 3 trees and 10 clusters per tree.
+# Each experimental codition has 3 trees in sequence and 10 clusters per
+# tree.
 ggplot(data = vv,
        mapping = aes(x = arb, y = hea/tot, color = spp)) +
     facet_grid(facets   = yr ~ cv) +
@@ -859,6 +862,126 @@ ggplot(data = vv,
     stat_summary(geom = "line", fun.y = "mean")
 
 #
+```
+
+```{r}
+#-----------------------------------------------------------------------
+# Modelo de 3 componentes de variância.
+
+# Variáveis que podem ser usadas na análise.
+vv$prop <- vv$hea/vv$tot
+# vv$asin <- asin(sqrt(vv$hea/vv$tot))
+# vv$logit <- binomial()$linkfun(0.95 * (vv$hea/vv$tot - 0.5) + 0.5)
+
+# Para guardar as médias.
+tb_means <- list()
+
+#--------------------------------------------
+# 2017.
+
+# Ajusta o modelo.
+a <- 2017
+mm0 <- lmer(prop ~ cv * spp + (1 | cv:arb) + (1 | cv:arb:spp),
+            data = filter(vv, yr == a),
+            weights = tot)
+
+# # Diagnóstico.
+# qqnorm(residuals(mm0))
+# plot(residuals(mm0) ~ fitted(mm0))
+
+# Estimativa dos componentes de variância.
+VarCorr(mm0)
+
+# Quadro de testes de hipótese.
+anova(mm0)
+
+# Médias ajustadas.
+tb_means[[as.character(a)]] <-
+    emmeans(mm0, specs = ~cv, data = filter(vv, yr == a)) %>%
+    multcomp::cld() %>%
+    as.data.frame()
+tb_means[[as.character(a)]]
+
+#--------------------------------------------
+# 2018.
+
+# Ajusta o modelo.
+a <- 2018
+mm0 <- lmer(prop ~ cv * spp + (1 | cv:arb) + (1 | cv:arb:spp),
+            data = filter(vv, yr == a),
+            weights = tot)
+
+# # Diagnóstico.
+# qqnorm(residuals(mm0))
+# plot(residuals(mm0) ~ fitted(mm0))
+
+# Estimativa dos componentes de variância.
+VarCorr(mm0)
+
+# Quadro de testes de hipótese.
+anova(mm0)
+
+# Médias ajustadas.
+tb_means[[as.character(a)]] <-
+    emmeans(mm0, specs = ~cv, data = filter(vv, yr == a)) %>%
+    multcomp::cld() %>%
+    as.data.frame()
+tb_means[[as.character(a)]]
+
+#--------------------------------------------
+# 2019.
+
+# Ajusta o modelo.
+a <- 2019
+mm0 <- lmer(prop ~ cv * spp + (1 | cv:arb) + (1 | cv:arb:spp),
+            data = filter(vv, yr == a),
+            weights = tot)
+
+# # Diagnóstico.
+# qqnorm(residuals(mm0))
+# plot(residuals(mm0) ~ fitted(mm0))
+
+# Estimativa dos componentes de variância.
+VarCorr(mm0)
+
+# Quadro de testes de hipótese.
+anova(mm0)
+
+# Médias ajustadas.
+tb_means[[as.character(a)]] <-
+    emmeans(mm0, specs = ~cv, data = filter(vv, yr == a)) %>%
+    multcomp::cld() %>%
+    as.data.frame()
+tb_means[[as.character(a)]]
+
+#-----------------------------------------------------------------------
+# Gráficos.
+
+tb_m <- tb_means %>%
+    bind_rows(.id = "yr")
+
+tb_m <- tb_m %>%
+    mutate(.group = str_trim(.group),
+           cld = {
+               a <- c("1", "12", "2")
+               b <- c("b", "ab", "a")
+               b[match(.group, a)]
+           })
+
+# Segment plot displaying means with confidence interval.
+gg_yr <- ggplot(data = tb_m,
+                mapping = aes(y = cv, x = emmean)) +
+    facet_wrap(facets = ~yr, ncol = 1, scale = "free_y") +
+    geom_point() +
+    geom_errorbarh(mapping = aes(xmin = lower.CL, xmax = upper.CL),
+                  height = 0.1) +
+    geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
+              vjust = 0,
+              nudge_y = 0.05,
+              show.legend = FALSE) +
+    labs(x = "Proportion of healthy nuts",
+         y = "Cultivars")
+gg_yr
 ```
 
 # Time of sensibility
@@ -878,6 +1001,126 @@ ggplot(data = tos,
     facet_wrap(facets = ~yr) +
     geom_jitter(width = 0.1) +
     stat_summary(geom = "line", fun.y = "mean")
+```
+
+```{r}
+# Criando a estrutura de unidades experimentais.
+#
+# UE: as árvores são os blocos.
+# UE para mês de inoculação: 1/5 de cada árvore.
+# UE para espécie: 1/2 de 1/5 de cada árvore.
+# UA: 10 cachos por UE de espécie.
+
+str(tos)
+
+tos <- tos %>%
+    mutate(ue_bl = interaction(yr, arb, drop = FALSE),
+           ue_mo = interaction(yr, arb, mo, drop = FALSE),
+           ue_spp = interaction(yr, arb, mo, spp, drop = FALSE))
+
+tos %>%
+    group_by(yr) %>%
+    summarise_at(vars(ue_cv, ue_mo, ue_spp, tot),
+                 ~ifelse(is.factor(.),
+                         nlevels(droplevels(.)),
+                         length(.)))
+
+#-----------------------------------------------------------------------
+
+# Variáveis que podem ser usadas na análise.
+tos$prop <- tos$hea/tos$tot
+# tos$asin <- asin(sqrt(tos$hea/tos$tot))
+# tos$logit <- binomial()$linkfun(0.95 * (tos$hea/tos$tot - 0.5) + 0.5)
+
+# Para guardar as médias.
+tb_means <- list()
+
+#--------------------------------------------
+# 2017.
+
+# Ajusta o modelo.
+a <- 2017
+tb <- droplevels(filter(tos, yr == a, mo %in% c("June", "July")))
+mm0 <- lmer(prop ~ spp * mo + (1 | ue_bl) + (1 | ue_mo) + (1 | ue_spp),
+            data = tb,
+            weights = tot)
+
+# # Diagnóstico.
+# qqnorm(residuals(mm0))
+# plot(residuals(mm0) ~ fitted(mm0))
+
+# Estimativa dos componentes de variância.
+VarCorr(mm0)
+
+# Quadro de testes de hipótese.
+anova(mm0)
+
+# Médias ajustadas.
+tb_means[[as.character(a)]] <-
+    emmeans(mm0, specs = ~spp, data = tb) %>%
+    multcomp::cld() %>%
+    as.data.frame()
+tb_means[[as.character(a)]]
+
+#--------------------------------------------
+# 2018.
+
+# Ajusta o modelo.
+a <- 2018
+tb <- droplevels(filter(tos, yr == a))
+mm0 <- lmer(prop ~ spp * mo + (1 | ue_bl) + (1 | ue_mo) + (1 | ue_spp),
+            data = tb,
+            weights = tot)
+
+# # Diagnóstico.
+# qqnorm(residuals(mm0))
+# plot(residuals(mm0) ~ fitted(mm0))
+
+# Estimativa dos componentes de variância.
+VarCorr(mm0)
+
+# Quadro de testes de hipótese.
+anova(mm0)
+
+# Médias ajustadas.
+tb_means[[as.character(a)]] <-
+    emmeans(mm0, specs = ~spp, data = tb) %>%
+    multcomp::cld() %>%
+    as.data.frame()
+tb_means[[as.character(a)]]
+
+#--------------------------------------------
+# 2019.
+
+# Ajusta o modelo.
+a <- 2019
+tb <- droplevels(filter(tos, yr == a))
+mm0 <- lmer(prop ~ spp * mo + (1 | ue_bl) + (1 | ue_mo) + (1 | ue_spp),
+            data = tb,
+            weights = tot)
+
+# # Diagnóstico.
+# qqnorm(residuals(mm0))
+# plot(residuals(mm0) ~ fitted(mm0))
+
+# Estimativa dos componentes de variância.
+VarCorr(mm0)
+
+# Quadro de testes de hipótese.
+anova(mm0)
+
+# Médias ajustadas.
+tb_means[[as.character(a)]] <-
+    emmeans(mm0, specs = ~mo | spp, data = tb) %>%
+    multcomp::cld() %>%
+    as.data.frame()
+tb_means[[as.character(a)]]
+
+#-----------------------------------------------------------------------
+# Gráfico.
+
+tb_means
+
 ```
 
 # Weather data log
