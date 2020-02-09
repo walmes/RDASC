@@ -860,8 +860,6 @@ ggplot(data = vv,
     facet_grid(facets = yr ~ cv) +
     geom_jitter(width = 0.1) +
     stat_summary(geom = "line", fun.y = "mean")
-
-#
 ```
 
 ```{r}
@@ -1011,8 +1009,6 @@ ggplot(data = tos,
 # UE para espécie: 1/2 de 1/5 de cada árvore.
 # UA: 10 cachos por UE de espécie.
 
-str(tos)
-
 tos <- tos %>%
     mutate(ue_bl = interaction(yr, arb, drop = FALSE),
            ue_mo = interaction(yr, arb, mo, drop = FALSE),
@@ -1020,17 +1016,19 @@ tos <- tos %>%
 
 tos %>%
     group_by(yr) %>%
-    summarise_at(vars(ue_cv, ue_mo, ue_spp, tot),
+    summarise_at(vars(ue_bl, ue_mo, ue_spp, tot),
                  ~ifelse(is.factor(.),
                          nlevels(droplevels(.)),
                          length(.)))
 
 #-----------------------------------------------------------------------
+# Variáveis.
 
 # Variáveis que podem ser usadas na análise.
-tos$prop <- tos$hea/tos$tot
+# tos$prop <- tos$hea/tos$tot
 # tos$asin <- asin(sqrt(tos$hea/tos$tot))
-# tos$logit <- binomial()$linkfun(0.95 * (tos$hea/tos$tot - 0.5) + 0.5)
+tos$logit <- binomial()$linkfun(0.95 * (tos$hea/tos$tot - 0.5) + 0.5)
+tos$y <- tos$logit
 
 # Para guardar as médias.
 tb_means <- list()
@@ -1041,7 +1039,7 @@ tb_means <- list()
 # Ajusta o modelo.
 a <- 2017
 tb <- droplevels(filter(tos, yr == a, mo %in% c("June", "July")))
-mm0 <- lmer(prop ~ spp * mo + (1 | ue_bl) + (1 | ue_mo) + (1 | ue_spp),
+mm0 <- lmer(y ~ spp * mo + (1 | ue_bl) + (1 | ue_mo) + (1 | ue_spp),
             data = tb,
             weights = tot)
 
@@ -1068,7 +1066,7 @@ tb_means[[as.character(a)]]
 # Ajusta o modelo.
 a <- 2018
 tb <- droplevels(filter(tos, yr == a))
-mm0 <- lmer(prop ~ spp * mo + (1 | ue_bl) + (1 | ue_mo) + (1 | ue_spp),
+mm0 <- lmer(y ~ spp * mo + (1 | ue_bl) + (1 | ue_mo) + (1 | ue_spp),
             data = tb,
             weights = tot)
 
@@ -1095,7 +1093,7 @@ tb_means[[as.character(a)]]
 # Ajusta o modelo.
 a <- 2019
 tb <- droplevels(filter(tos, yr == a))
-mm0 <- lmer(prop ~ spp * mo + (1 | ue_bl) + (1 | ue_mo) + (1 | ue_spp),
+mm0 <- lmer(y ~ spp * mo + (1 | ue_bl) + (1 | ue_mo) + (1 | ue_spp),
             data = tb,
             weights = tot)
 
@@ -1121,6 +1119,43 @@ tb_means[[as.character(a)]]
 
 tb_means
 
+tb_m <- tb_means %>%
+    bind_rows(.id = "yr")
+
+tb_m$cld <- c("a", "a", "a", "a",
+              "c", "b", "a", "a",
+              "a", "a", "a", "a")
+
+# Transformação inversa da aplicada para a análise.
+tb_m <- tb_m %>%
+    mutate_at(c("emmean", "lower.CL", "upper.CL"), binomial()$linkinv)
+
+# Segment plot displaying means with confidence interval.
+ggplot(data = filter(tb_m, yr %in% c("2017", "2018")),
+       mapping = aes(y = spp, x = emmean)) +
+    facet_wrap(facets = ~yr, ncol = 1) +
+    geom_point() +
+    geom_errorbarh(mapping = aes(xmin = lower.CL, xmax = upper.CL),
+                   height = 0.1) +
+    geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
+              vjust = 0,
+              nudge_y = 0.05,
+              show.legend = FALSE) +
+    labs(x = "Proportion of healthy nuts",
+         y = "Species")
+
+ggplot(data = filter(tb_m, yr %in% c("2019")),
+       mapping = aes(x = mo, y = emmean)) +
+    facet_wrap(facets = ~spp, nrow = 1) +
+    geom_point() +
+    geom_errorbar(mapping = aes(ymin = lower.CL, ymax = upper.CL),
+                   width = 0.1) +
+    geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
+              hjust = 0,
+              nudge_x = 0.05,
+              show.legend = FALSE) +
+    labs(y = "Proportion of healthy nuts",
+         x = "Months")
 ```
 
 # Weather data log
@@ -1134,9 +1169,13 @@ pos_l <- pos %>%
 
 ggplot(data = pos_l,
        mapping = aes(x = dt, y = value)) +
-    facet_grid(facets = serie ~ ., scale = "free_y") +
+    facet_grid(facets = serie ~ ., scale = "free_y",
+               labeller = labeller(serie = c("dew" = "Dew point temp.",
+                                             "lw" = "Leaf wetness",
+                                             "rh" = "Rel. humidity",
+                                             "tem" = "Temperature"))) +
     geom_line(color = "gray50") +
-    geom_smooth(method = "loess", se = FALSE, span = 0.05)
-
-#
+    geom_smooth(method = "loess", se = FALSE, span = 0.05,
+                color = "black") +
+    labs(x = "Days", y = "Value")
 ```
