@@ -12,6 +12,8 @@ output:
 # Session definitions
 
 ```{r, message = FALSE, results = "hide"}
+rm(list = objects())
+
 # List of packages.
 pkg <- c("tidyverse", "agricolae", "emmeans", "lme4", "lmerTest")
 
@@ -34,8 +36,12 @@ ogt$exp <- factor(ogt$exp)
 attr(ogt, "spec") <- NULL
 str(ogt)
 
-# Get the mean diameter.
-ogt$diameter <- (ogt$mm1 + ogt$mm2)/2
+# Get the mean diameter (4 mm is the plug size).
+ogt$diameter <- (ogt$mm1 + ogt$mm2)/2 - 4
+
+# with(ogt, c(min(mm1, na.rm = TRUE),
+#             min(mm2, na.rm = TRUE),
+#             min(diameter, na.rm = TRUE)))
 
 # Curves for each isolate according to experimental conditions.
 ggplot(data = ogt,
@@ -102,7 +108,8 @@ aumgc[with(aumgc,
 # Averages the AUC.
 aumgcm <- aumgc %>%
     group_by(exp, iso, tem) %>%
-    summarise(aucm = mean(auc, na.rm = TRUE))
+    summarise(aucm = mean(auc, na.rm = TRUE)) %>%
+    ungroup()
 
 # Visualize.
 ggplot(data = aumgcm,
@@ -176,7 +183,7 @@ gg +
 
 A 4 degree polynomial will be used to fit the AUC as a function of
 temperature.  After fitting, the optimal temperature will be determined
-by a numerical optimation method.
+by a numerical optmization method.
 
 ```{r}
 #-----------------------------------------------------------------------
@@ -262,10 +269,9 @@ tk <- tk$groups %>%
 tk
 
 # Least squares means.
-lsm <- emmeans(m0, specs = "iso")
-lsm <- print(lsm) %>%
+lsm <- emmeans(m0, specs = "iso") %>%
+    as.data.frame() %>%
     mutate(iso = as.character(iso))
-str(lsm)
 
 # Merge these two tables.
 tb_means <- full_join(x = lsm, y = tk, by = "iso")
@@ -285,6 +291,9 @@ ggplot(data = tb_means,
          x = expression("Temperature" ~ (degree * C)))
 ```
 
+Pairwise comparisons were made using Tukey HSD test at a 5% nominal
+significance level.
+
 # Sporulation capability
 
 ## Exploratory data analysis
@@ -292,8 +301,13 @@ ggplot(data = tb_means,
 ```{r}
 # Prepare table of data.
 spo <- as_tibble(RDASC::pistachio_anthracnose$spo_vt)
-spo$exp <- factor(spo$exp)
 attr(spo, "spec") <- NULL
+
+# Convert variables to factor.
+spo$exp <- factor(spo$exp)
+spo$spp <- factor(spo$spp,
+                  levels = c("Cf", "Ck"),
+                  labels = c("C. fioriniae", "C. karstii"))
 str(spo)
 
 # Summaries.
@@ -322,8 +336,8 @@ ggplot(data = spo,
 ## Model fitting
 
 Data were transform to log scale to avoid violations in model
-assumption. These data could be analysed assuming a probability
-distribution to count data. Here we decided to use a Gaussian model to
+assumptions. These data could be analysed assuming a probability
+distribution for count data. Here we decided to use a Gaussian model to
 the transformed response variable. This results should not differ from
 the count data model.
 
@@ -353,10 +367,11 @@ emm <- emmeans(m1, specs = ~iso)
 emm %>% as.data.frame()
 
 # Values in the response scale.
-tb_means <- multcomp::cld(emm) %>%
+tb_means <- multcomp::cld(emm, Letters = letters) %>%
     as.data.frame() %>%
-    mutate_at(c("emmean", "lower.CL", "upper.CL"), exp)
-tb_means$cld <- c("b", "a")
+    mutate_at(c("emmean", "lower.CL", "upper.CL"), exp) %>%
+    mutate(.group = str_trim(.group)) %>%
+    rename(cld = .group)
 tb_means
 ```
 
@@ -384,6 +399,9 @@ ggplot(data = tb_means,
 # Import the data.
 cs <- as_tibble(RDASC::pistachio_anthracnose$cs)
 cs$exp <- factor(cs$exp)
+cs$spp <- factor(cs$spp,
+                 levels = c("Cf", "Ck"),
+                 labels = c("C. fioriniae", "C. karstii"))
 attr(cs, "spec") <- NULL
 str(cs)
 
@@ -486,23 +504,25 @@ anova(m0)
 # tt$groups
 
 emm <- emmeans(m0, specs = ~kare)
-tb_means <- multcomp::cld(emm) %>%
-    as.data.frame()
+tb_means <- multcomp::cld(emm, Letters = letters) %>%
+    as.data.frame() %>%
+    mutate(.group = str_trim(.group)) %>%
+    rename(cld = .group)
 tb_means
 
-tb_means$cld <- c("a", "b")[c(2, 2, 2, 2, 2, 2, 1)]
 tb_results[["len"]] <- tb_means
 
 # Segment plot displaying means with confidence interval.
 gg_len <- ggplot(data = tb_means,
-       mapping = aes(y = fct_reorder(kare, emmean), x = emmean)) +
+       # mapping = aes(y = fct_reorder(kare, emmean), x = emmean)) +
+       mapping = aes(y = kare, x = emmean)) +
     geom_point() +
     geom_errorbarh(mapping = aes(xmin = lower.CL, xmax = upper.CL),
                   height = 0.1) +
     geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
               vjust = 0, nudge_y = 0.05) +
     labs(x = expression("Conidia length" ~ (mu * m)),
-         y = "Isolates")
+         y = "Isolates", title = "(A)")
 ```
 
 ## Conidia width
@@ -518,23 +538,25 @@ layout(1)
 anova(m0)
 
 emm <- emmeans(m0, specs = ~kare)
-tb_means <- multcomp::cld(emm) %>%
-    as.data.frame()
+tb_means <- multcomp::cld(emm, Letters = letters) %>%
+    as.data.frame() %>%
+    mutate(.group = str_trim(.group)) %>%
+    rename(cld = .group)
 tb_means
 
-tb_means$cld <- c("a", "b")[c(2, 2, 2, 2, 2, 2, 1)]
 tb_results[["wid"]] <- tb_means
 
 # Segment plot displaying means with confidence interval.
 gg_wid <- ggplot(data = tb_means,
-       mapping = aes(y = fct_reorder(kare, emmean), x = emmean)) +
+       # mapping = aes(y = fct_reorder(kare, emmean), x = emmean)) +
+       mapping = aes(y = kare, x = emmean)) +
     geom_point() +
     geom_errorbarh(mapping = aes(xmin = lower.CL, xmax = upper.CL),
                   height = 0.1) +
     geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
               vjust = 0, nudge_y = 0.05) +
     labs(x = expression("Conidia width" ~ (mu * m)),
-         y = "Isolates")
+         y = "Isolates", title = "(B)")
 ```
 
 ## Conidia volume
@@ -550,23 +572,25 @@ layout(1)
 anova(m0)
 
 emm <- emmeans(m0, specs = ~kare)
-tb_means <- multcomp::cld(emm) %>%
-    as.data.frame()
+tb_means <- multcomp::cld(emm, Letters = letters) %>%
+    as.data.frame() %>%
+    mutate(.group = str_trim(.group)) %>%
+    rename(cld = .group)
 tb_means
 
-tb_means$cld <- c("a", "b")[c(2, 2, 2, 2, 2, 2, 1)]
 tb_results[["vol"]] <- tb_means
 
 # Segment plot displaying means with confidence interval.
 gg_vol <- ggplot(data = tb_means,
-       mapping = aes(y = fct_reorder(kare, emmean), x = emmean)) +
+       # mapping = aes(y = fct_reorder(kare, emmean), x = emmean)) +
+       mapping = aes(y = kare, x = emmean)) +
     geom_point() +
     geom_errorbarh(mapping = aes(xmin = lower.CL, xmax = upper.CL),
                   height = 0.1) +
     geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
               vjust = 0, nudge_y = 0.05) +
     labs(x = expression("Cubic root of conidia volume" ~ (mu * m)),
-         y = "Isolates")
+         y = "Isolates", title = "(C)")
 ```
 
 ```{r}
@@ -583,6 +607,9 @@ gridExtra::grid.arrange(gg_len, gg_wid, gg_vol, ncol = 1)
 germ <- as_tibble(RDASC::pistachio_anthracnose$ogertem)
 germ$exp <- factor(germ$exp)
 germ$tim <- factor(germ$tim)
+germ$spp <- factor(germ$spp,
+                   levels = c("Cf", "Ck"),
+                   labels = c("C. fioriniae", "C. karstii"))
 attr(germ, "spec") <- NULL
 str(germ)
 
@@ -674,7 +701,7 @@ gridExtra::grid.arrange(
                       mapping = aes(x = iso, y = germ_opt,
                                     color = tim, group = tim)) +
                geom_point() +
-               stat_summary(geom = "line", fun.y = "mean") +
+               stat_summary(geom = "line", fun = "mean") +
                labs(y = "Maximum germination",
                     x = "Isolates")
            )
@@ -693,11 +720,11 @@ layout(1)
 anova(m0)
 
 emm <- emmeans(m0, specs = ~iso)
-tb_means <- multcomp::cld(emm) %>%
-    as.data.frame()
+tb_means <- multcomp::cld(emm, Letters = letters) %>%
+    as.data.frame() %>%
+    mutate(.group = str_trim(.group)) %>%
+    rename(cld = .group)
 tb_means
-
-tb_means$cld <- c("a", "b")[c(2, 1, 1, 1, 1, 1, 1)]
 
 # Segment plot displaying means with confidence interval.
 gg_temp <- ggplot(data = tb_means,
@@ -710,7 +737,7 @@ gg_temp <- ggplot(data = tb_means,
               nudge_y = 0.05,
               show.legend = FALSE) +
     labs(x = expression("Optimal temperature for germination" ~ (""^degree * C)),
-         y = "Isolates")
+         y = "Isolates", title = "(A)")
 
 # Analysis on the logit scale of the estimated germination.
 temp_opt$logit_germ_opt <- binomial()$linkfun(temp_opt$germ_opt)
@@ -728,12 +755,12 @@ anova(m0)
 m0 <- lm(logit_germ_opt ~ exp + iso + tim, data = temp_opt[-8, ])
 
 emm <- emmeans(m0, specs = ~iso)
-tb_means <- multcomp::cld(emm) %>%
+tb_means <- multcomp::cld(emm, Letters = letters) %>%
     as.data.frame() %>%
+    mutate(.group = str_trim(.group)) %>%
+    rename(cld = .group) %>%
     mutate_at(c("emmean", "lower.CL", "upper.CL"), binomial()$linkinv)
 tb_means
-
-tb_means$cld <- c("b", "a")[c(1, 2, 2, 2, 2, 2, 2)]
 
 # ATTENTION: these values of germination is a mean of the predicted
 # germination for the levels of tim. So, interpret them with caution. In
@@ -751,13 +778,16 @@ gg_germ <- ggplot(data = tb_means,
               nudge_y = 0.05,
               show.legend = FALSE) +
     labs(x = expression("Maximum germination"),
-         y = "Isolates")
+         y = "Isolates", title = "(B)")
 
 gridExtra::grid.arrange(gg_temp, gg_germ, ncol = 1)
 
 # Get the means for all combinations despite the effects are additive.
 emm <- emmeans(m0, specs = ~iso + tim) %>%
+    # multcomp::cld(Letters = letters) %>%
     as.data.frame() %>%
+    # mutate(.group = str_trim(.group)) %>%
+    # rename(cld = .group) %>%
     mutate_at(c("emmean", "lower.CL", "upper.CL"), binomial()$linkinv)
 
 pd <- position_dodge(0.1)
@@ -786,6 +816,10 @@ str(RDASC::pistachio_anthracnose$af)
 af <- RDASC::pistachio_anthracnose$af %>%
     as_tibble()
 
+af$spp <- factor(af$spp,
+                 levels = c("Cf", "Ck"),
+                 labels = c("C. fioriniae", "C. karstii"))
+
 af <- af %>%
     mutate_at(c("exp", "spp", "iso"), as.factor)
 af
@@ -810,11 +844,11 @@ layout(1)
 anova(m0, test = "F")
 
 emm <- emmeans(m0, specs = ~iso)
-tb_means <- multcomp::cld(emm, type = "response") %>%
-    as.data.frame()
+tb_means <- multcomp::cld(emm, Letters = letters, type = "response") %>%
+    as.data.frame() %>%
+    mutate(.group = str_trim(.group)) %>%
+    rename(cld = .group)
 tb_means
-
-tb_means$cld <- c("a", "b")[c(2, 2, 2, 2, 2, 2, 1)]
 
 # Segment plot displaying means with confidence interval.
 gg_af <- ggplot(data = tb_means,
@@ -834,10 +868,13 @@ gg_af
 # Patogenicity in vivo
 
 ```{r}
-# ATTENTION: new data from 2019 are available.
+# ATTENTION: new data from 2020 are available.
 vv <- RDASC::pistachio_anthracnose$pato_vv
 vv$cv[vv$cv == "RA"] <- "Red Aleppo"
 vv$cv <- droplevels(vv$cv)
+vv$spp <- factor(vv$spp,
+                 levels = c("Cf", "Ck"),
+                 labels = c("C. fioriniae", "C. karstii"))
 str(vv)
 
 # Incomplete crossed factorial design. But it is a complete factorial
@@ -848,9 +885,9 @@ ftable(xtabs(~cv + spp + yr, data = vv))
 # tree.
 ggplot(data = vv,
        mapping = aes(x = arb, y = hea/tot, color = spp)) +
-    facet_grid(facets   = yr ~ cv) +
+    facet_grid(facets = yr ~ cv) +
     geom_point() +
-    stat_summary(geom = "line", fun.y = "mean")
+    stat_summary(geom = "line", fun = "mean")
 
 ggplot(data = vv,
        mapping = aes(x = spp,
@@ -859,7 +896,7 @@ ggplot(data = vv,
                      group = 1)) +
     facet_grid(facets = yr ~ cv) +
     geom_jitter(width = 0.1) +
-    stat_summary(geom = "line", fun.y = "mean")
+    stat_summary(geom = "line", fun = "mean")
 ```
 
 ```{r}
@@ -896,7 +933,7 @@ anova(mm0)
 # Médias ajustadas.
 tb_means[[as.character(a)]] <-
     emmeans(mm0, specs = ~cv, data = filter(vv, yr == a)) %>%
-    multcomp::cld() %>%
+    multcomp::cld(Letters = letters) %>%
     as.data.frame()
 tb_means[[as.character(a)]]
 
@@ -922,7 +959,7 @@ anova(mm0)
 # Médias ajustadas.
 tb_means[[as.character(a)]] <-
     emmeans(mm0, specs = ~cv, data = filter(vv, yr == a)) %>%
-    multcomp::cld() %>%
+    multcomp::cld(Letters = letters) %>%
     as.data.frame()
 tb_means[[as.character(a)]]
 
@@ -948,7 +985,35 @@ anova(mm0)
 # Médias ajustadas.
 tb_means[[as.character(a)]] <-
     emmeans(mm0, specs = ~cv, data = filter(vv, yr == a)) %>%
-    multcomp::cld() %>%
+    multcomp::cld(Letters = letters) %>%
+    as.data.frame()
+tb_means[[as.character(a)]]
+
+#--------------------------------------------
+# 2020.
+
+# NOTE: This year only one spp were observed.
+
+# Ajusta o modelo.
+a <- 2020
+mm0 <- lmer(prop ~ cv + (1 | cv:arb),
+            data = filter(vv, yr == a),
+            weights = tot)
+
+# # Diagnóstico.
+# qqnorm(residuals(mm0))
+# plot(residuals(mm0) ~ fitted(mm0))
+
+# Estimativa dos componentes de variância.
+VarCorr(mm0)
+
+# Quadro de testes de hipótese.
+anova(mm0)
+
+# Médias ajustadas.
+tb_means[[as.character(a)]] <-
+    emmeans(mm0, specs = ~cv, data = filter(vv, yr == a)) %>%
+    multcomp::cld(Letters = letters) %>%
     as.data.frame()
 tb_means[[as.character(a)]]
 
@@ -956,15 +1021,9 @@ tb_means[[as.character(a)]]
 # Gráficos.
 
 tb_m <- tb_means %>%
-    bind_rows(.id = "yr")
-
-tb_m <- tb_m %>%
-    mutate(.group = str_trim(.group),
-           cld = {
-               a <- c("1", "12", "2")
-               b <- c("b", "ab", "a")
-               b[match(.group, a)]
-           })
+    bind_rows(.id = "yr") %>%
+    rename(cld = .group) %>%
+    mutate(cld = str_trim(cld))
 
 # Segment plot displaying means with confidence interval.
 gg_yr <- ggplot(data = tb_m,
@@ -985,9 +1044,12 @@ gg_yr
 # Time of sensibility
 
 ```{r}
-# ATTENTION: new data from 2019 are available.
+# ATTENTION: new data from 2020 are available.
 tos <- RDASC::pistachio_anthracnose$tos
 tos$mo <- factor(tos$mo, levels = unique(tos$mo)[c(4, 5, 1, 2, 3)])
+tos$spp <- factor(tos$spp,
+                  levels = c("Cf", "Ck"),
+                  labels = c("C. fioriniae", "C. karstii"))
 str(tos)
 
 # Incomplete crossed factorial design. But it is a complete factorial
@@ -998,7 +1060,7 @@ ggplot(data = tos,
        mapping = aes(x = mo, y = hea/tot, color = spp, group = spp)) +
     facet_wrap(facets = ~yr) +
     geom_jitter(width = 0.1) +
-    stat_summary(geom = "line", fun.y = "mean")
+    stat_summary(geom = "line", fun = "mean")
 ```
 
 ```{r}
@@ -1056,7 +1118,7 @@ anova(mm0)
 # Médias ajustadas.
 tb_means[[as.character(a)]] <-
     emmeans(mm0, specs = ~spp, data = tb) %>%
-    multcomp::cld() %>%
+    multcomp::cld(Letters = letters) %>%
     as.data.frame()
 tb_means[[as.character(a)]]
 
@@ -1083,7 +1145,7 @@ anova(mm0)
 # Médias ajustadas.
 tb_means[[as.character(a)]] <-
     emmeans(mm0, specs = ~spp, data = tb) %>%
-    multcomp::cld() %>%
+    multcomp::cld(Letters = letters) %>%
     as.data.frame()
 tb_means[[as.character(a)]]
 
@@ -1110,7 +1172,34 @@ anova(mm0)
 # Médias ajustadas.
 tb_means[[as.character(a)]] <-
     emmeans(mm0, specs = ~mo | spp, data = tb) %>%
-    multcomp::cld() %>%
+    multcomp::cld(Letters = letters) %>%
+    as.data.frame()
+tb_means[[as.character(a)]]
+
+#--------------------------------------------
+# 2020.
+
+# Ajusta o modelo.
+a <- 2020
+tb <- droplevels(filter(tos, yr == a))
+mm0 <- lmer(y ~ mo + (1 | ue_bl) + (1 | ue_mo) + (1 | ue_spp),
+            data = tb,
+            weights = tot)
+
+# # Diagnóstico.
+# qqnorm(residuals(mm0))
+# plot(residuals(mm0) ~ fitted(mm0))
+
+# Estimativa dos componentes de variância.
+VarCorr(mm0)
+
+# Quadro de testes de hipótese.
+anova(mm0)
+
+# Médias ajustadas.
+tb_means[[as.character(a)]] <-
+    emmeans(mm0, specs = ~mo, data = tb) %>%
+    multcomp::cld(Letters = letters) %>%
     as.data.frame()
 tb_means[[as.character(a)]]
 
@@ -1120,11 +1209,9 @@ tb_means[[as.character(a)]]
 tb_means
 
 tb_m <- tb_means %>%
-    bind_rows(.id = "yr")
-
-tb_m$cld <- c("a", "a", "a", "a",
-              "c", "b", "a", "a",
-              "a", "a", "a", "a")
+    bind_rows(.id = "yr") %>%
+    rename(cld = .group) %>%
+    mutate(cld = str_trim(cld))
 
 # Transformação inversa da aplicada para a análise.
 tb_m <- tb_m %>%
@@ -1147,6 +1234,18 @@ ggplot(data = filter(tb_m, yr %in% c("2017", "2018")),
 ggplot(data = filter(tb_m, yr %in% c("2019")),
        mapping = aes(x = mo, y = emmean)) +
     facet_wrap(facets = ~spp, nrow = 1) +
+    geom_point() +
+    geom_errorbar(mapping = aes(ymin = lower.CL, ymax = upper.CL),
+                   width = 0.1) +
+    geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
+              hjust = 0,
+              nudge_x = 0.05,
+              show.legend = FALSE) +
+    labs(y = "Proportion of healthy nuts",
+         x = "Months")
+
+ggplot(data = filter(tb_m, yr %in% c("2020")),
+       mapping = aes(x = mo, y = emmean)) +
     geom_point() +
     geom_errorbar(mapping = aes(ymin = lower.CL, ymax = upper.CL),
                    width = 0.1) +
