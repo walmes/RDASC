@@ -11,8 +11,21 @@ output:
 
 # Session definitions
 
+```{r, include = FALSE}
+export_tiff <- TRUE
+
+library(knitr)
+opts_chunk$set(dpi = 100,
+               dev = "png",
+               warning = FALSE,
+               error = FALSE,
+               message = FALSE,
+               dev.args = list(family = "Roboto Condensed"))
+# options(width = 68)
+```
+
 ```{r, message = FALSE, results = "hide"}
-rm(list = objects())
+# rm(list = objects())
 
 # List of packages.
 pkg <- c("tidyverse", "agricolae", "emmeans", "lme4", "lmerTest")
@@ -57,9 +70,9 @@ ggplot(data = ogt,
 
 # Loads a function to calculate area under a curve by trapezoidal
 # method.
-source("https://raw.githubusercontent.com/walmes/wzRfun/master/R/auc.R")
-args(auc)
-body(auc)
+# source("https://raw.githubusercontent.com/walmes/wzRfun/master/R/auc.R")
+# args(auc)
+# body(auc)
 
 # Frequency tables.
 xtabs(~iso + spp, data = ogt)
@@ -192,9 +205,9 @@ by a numerical optmization method.
 # Function that fits a model equation to data and determine the optimal
 # temperature.
 fit_poly <- function(data,
-                         formula = auc ~ poly(tem, degree = 4),
-                         interval = c(10, 35),
-                         maximum = TRUE) {
+                     formula = auc ~ poly(tem, degree = 4),
+                     interval = c(10, 35),
+                     maximum = TRUE) {
     m0 <- lm(formula = formula, data = data)
     pred <- function(x) predict(m0, newdata = list(tem = x))
     t_opt <- optimise(f = pred,
@@ -219,7 +232,7 @@ temps <- aumgcm %>%
                   fit_poly(data = data.frame(aucm, tem),
                            formula = aucm ~ poly(tem, degree = 4)))) %>%
     ungroup() %>%
-    unnest()
+    unnest(topt_p)
 
 # # Fits for each experimental unit.
 # temps <- aumgc %>%
@@ -520,7 +533,7 @@ gg_len <- ggplot(data = tb_means,
     geom_errorbarh(mapping = aes(xmin = lower.CL, xmax = upper.CL),
                   height = 0.1) +
     geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
-              vjust = 0, nudge_y = 0.05) +
+              vjust = 0, nudge_y = 0.10) +
     labs(x = expression("Conidia length" ~ (mu * m)),
          y = "Isolates", title = "(A)")
 ```
@@ -554,7 +567,7 @@ gg_wid <- ggplot(data = tb_means,
     geom_errorbarh(mapping = aes(xmin = lower.CL, xmax = upper.CL),
                   height = 0.1) +
     geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
-              vjust = 0, nudge_y = 0.05) +
+              vjust = 0, nudge_y = 0.10) +
     labs(x = expression("Conidia width" ~ (mu * m)),
          y = "Isolates", title = "(B)")
 ```
@@ -588,12 +601,12 @@ gg_vol <- ggplot(data = tb_means,
     geom_errorbarh(mapping = aes(xmin = lower.CL, xmax = upper.CL),
                   height = 0.1) +
     geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
-              vjust = 0, nudge_y = 0.05) +
-    labs(x = expression("Cubic root of conidia volume" ~ (mu * m)),
+              vjust = 0, nudge_y = 0.10) +
+    labs(x = expression("Cubic root of conidia volume" ~ (mu * m^3)),
          y = "Isolates", title = "(C)")
 ```
 
-```{r}
+```{r, fig.height = 9}
 # All morphological characteristics on the same plot.
 gridExtra::grid.arrange(gg_len, gg_wid, gg_vol, ncol = 1)
 ```
@@ -734,7 +747,7 @@ gg_temp <- ggplot(data = tb_means,
                   height = 0.1) +
     geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
               vjust = 0,
-              nudge_y = 0.05,
+              nudge_y = 0.10,
               show.legend = FALSE) +
     labs(x = expression("Optimal temperature for germination" ~ (""^degree * C)),
          y = "Isolates", title = "(A)")
@@ -775,9 +788,9 @@ gg_germ <- ggplot(data = tb_means,
                   height = 0.1) +
     geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
               vjust = 0,
-              nudge_y = 0.05,
+              nudge_y = 0.10,
               show.legend = FALSE) +
-    labs(x = expression("Maximum germination"),
+    labs(x = expression("Proportion of maximum germination"),
          y = "Isolates", title = "(B)")
 
 gridExtra::grid.arrange(gg_temp, gg_germ, ncol = 1)
@@ -812,7 +825,7 @@ ggplot(data = emm,
 # Appressory formation
 
 ```{r}
-str(RDASC::pistachio_anthracnose$af)
+# str(RDASC::pistachio_anthracnose$af)
 af <- RDASC::pistachio_anthracnose$af %>%
     as_tibble()
 
@@ -1034,7 +1047,7 @@ gg_yr <- ggplot(data = tb_m,
                   height = 0.1) +
     geom_text(mapping = aes(label = sprintf("%0.2f%s", emmean, cld)),
               vjust = 0,
-              nudge_y = 0.05,
+              nudge_y = 0.125,
               show.legend = FALSE) +
     labs(x = "Proportion of healthy nuts",
          y = "Cultivars")
@@ -1122,6 +1135,14 @@ tb_means[[as.character(a)]] <-
     as.data.frame()
 tb_means[[as.character(a)]]
 
+u <- emmeans(mm0, specs = ~1, data = tb) %>%
+    as.data.frame() %>%
+    rename("yr" = "1") %>%
+    mutate(yr = a)
+
+tb_means[[as.character(a)]] <- bind_rows(tb_means[[as.character(a)]], u)
+tb_means[[as.character(a)]]
+
 #--------------------------------------------
 # 2018.
 
@@ -1147,6 +1168,14 @@ tb_means[[as.character(a)]] <-
     emmeans(mm0, specs = ~spp, data = tb) %>%
     multcomp::cld(Letters = letters) %>%
     as.data.frame()
+tb_means[[as.character(a)]]
+
+u <- emmeans(mm0, specs = ~1, data = tb) %>%
+    as.data.frame() %>%
+    rename("yr" = "1") %>%
+    mutate(yr = a)
+
+tb_means[[as.character(a)]] <- bind_rows(tb_means[[as.character(a)]], u)
 tb_means[[as.character(a)]]
 
 #--------------------------------------------
@@ -1203,6 +1232,14 @@ tb_means[[as.character(a)]] <-
     as.data.frame()
 tb_means[[as.character(a)]]
 
+u <- emmeans(mm0, specs = ~1, data = tb) %>%
+    as.data.frame() %>%
+    rename("yr" = "1") %>%
+    mutate(yr = a)
+
+tb_means[[as.character(a)]] <- bind_rows(tb_means[[as.character(a)]], u)
+tb_means[[as.character(a)]]
+
 #-----------------------------------------------------------------------
 # Gráfico.
 
@@ -1218,7 +1255,7 @@ tb_m <- tb_m %>%
     mutate_at(c("emmean", "lower.CL", "upper.CL"), binomial()$linkinv)
 
 # Segment plot displaying means with confidence interval.
-ggplot(data = filter(tb_m, yr %in% c("2017", "2018")),
+ggplot(data = filter(tb_m, yr %in% c("2017", "2018"), !is.na(spp)),
        mapping = aes(y = spp, x = emmean)) +
     facet_wrap(facets = ~yr, ncol = 1) +
     geom_point() +
@@ -1244,7 +1281,7 @@ ggplot(data = filter(tb_m, yr %in% c("2019")),
     labs(y = "Proportion of healthy nuts",
          x = "Months")
 
-ggplot(data = filter(tb_m, yr %in% c("2020")),
+ggplot(data = filter(tb_m, yr %in% c("2020"), !is.na(cld)),
        mapping = aes(x = mo, y = emmean)) +
     geom_point() +
     geom_errorbar(mapping = aes(ymin = lower.CL, ymax = upper.CL),
@@ -1255,6 +1292,20 @@ ggplot(data = filter(tb_m, yr %in% c("2020")),
               show.legend = FALSE) +
     labs(y = "Proportion of healthy nuts",
          x = "Months")
+
+filter(tb_m, is.na(spp), is.na(mo))
+
+ggplot(data = filter(tb_m, is.na(spp), is.na(mo)),
+       mapping = aes(x = yr, y = emmean)) +
+    geom_point() +
+    geom_errorbar(mapping = aes(ymin = lower.CL, ymax = upper.CL),
+                   width = 0.1) +
+    geom_text(mapping = aes(label = sprintf("%0.2f", emmean)),
+              hjust = 0,
+              nudge_x = 0.05,
+              show.legend = FALSE) +
+    labs(y = "Proportion of healthy nuts",
+         x = "Seasons")
 ```
 
 # Weather data log
